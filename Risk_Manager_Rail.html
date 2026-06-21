@@ -795,9 +795,12 @@ function normalizeSubsystem(value){
   };
   return map[value]||"";
 }
+function riskSubsystem(r){
+  return normalizeSubsystem(r?.subsystem)||normalizeSubsystem(r?.owner)||"";
+}
 function normalizeRiskSubsystems(){
   (DATA.risks||[]).forEach(r=>{
-    const s=normalizeSubsystem(r.owner||r.subsystem);
+    const s=riskSubsystem(r);
     r.owner=s;
     r.subsystem=s;
   });
@@ -978,7 +981,7 @@ function distributionSignature(distribution){
 }
 function generatedRiskPlanningGuide(r){
   const p=normalizePhasing(r);
-  const subsystem=normalizeSubsystem(r.owner||r.subsystem)||"SUBSYSTEM";
+  const subsystem=riskSubsystem(r)||"SUBSYSTEM";
   const prefix=[codePart(DATA.meta.projectCode,"CDG"),codePart(DATA.meta.riskCode,"RISK"),subsystem].join("_");
   if(p.mode==="specificYear")return `${prefix}_${yearCode(p.specificYear||1)}`;
   if(p.mode==="contractPeriod"){
@@ -1440,7 +1443,7 @@ function toggleMatrixFilter(i,l){
 
 function renderBars(){
   // by subsystem -> residual
-  const sub={};DATA.risks.forEach(r=>{const v=valorize(r);const k=r.subsystem||'(not defined)';sub[k]=(sub[k]||0)+v.residual;});
+  const sub={};DATA.risks.forEach(r=>{const v=valorize(r);const k=riskSubsystem(r)||'(not defined)';sub[k]=(sub[k]||0)+v.residual;});
   const subArr=Object.entries(sub).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);
   const maxSub=Math.max(1,...subArr.map(x=>x[1]));
   document.getElementById('bars-sub').innerHTML = subArr.length?subArr.map(([k,v])=>bar(k,v,maxSub,f0(v))).join('')
@@ -1671,7 +1674,7 @@ function renderForm(){
   r.phasing=normalizePhasing(r);
   ensureMercuryOverrides(r);
   syncPlanningGuideFromPhasing(r);
-  const normalizedSubsystem=normalizeSubsystem(r.owner||r.subsystem);
+  const normalizedSubsystem=riskSubsystem(r);
   r.owner=normalizedSubsystem;
   r.subsystem=normalizedSubsystem;
   document.getElementById('drawer-body').innerHTML=`
@@ -1683,7 +1686,7 @@ function renderForm(){
       <div class="field"><label>Risk number <span class="req">*</span></label><input data-f="number" type="number" min="1" step="1" value="${esc(r.number)}"></div>
       <div class="field full"><label>Risk description <span class="req">*</span></label>
         <textarea data-f="desc" placeholder="Describe the risk...">${esc(r.desc)}</textarea></div>
-      <div class="field"><label>Subsystem / Owner</label>${sel('owner',SUBSYSTEMS,r.owner||r.subsystem,'onchange="onSubsystemOwnerChange(this.value)"')}</div>
+      <div class="field"><label>Subsystem / Owner</label>${sel('owner',SUBSYSTEMS,riskSubsystem(r),'onchange="onSubsystemOwnerChange(this.value)"')}</div>
       <div class="field"><label>Work Package / Function</label><input data-f="wp" value="${esc(r.wp)}" placeholder="WP0"></div>
       <div class="field"><label>Category</label>${sel('cat',CATEGORIES,r.cat)}</div>
       <div class="field"><label>Status</label>${sel('status',STATUSES,r.status,'onchange="onFormChange()"')}</div>
@@ -1897,11 +1900,12 @@ function onFormChange(){
   }else{
     r.unit=MERCURY_DEFAULTS.caratUnit;
   }
-  if(r.owner){
-    r.owner=normalizeSubsystem(r.owner);
-    r.subsystem=r.owner;
+  const subsystem=riskSubsystem(r);
+  if(subsystem){
+    r.owner=subsystem;
+    r.subsystem=subsystem;
     const sub=document.querySelector('#drawer-body [data-f="subsystem"]');
-    if(sub&&sub.value!==r.owner)sub.value=r.owner;
+    if(sub&&sub.value!==subsystem)sub.value=subsystem;
   }
   syncPlanningGuideFromPhasing(r);
   const planningInput=document.querySelector('#drawer-body [data-f="planningGuide"]');
@@ -1973,8 +1977,9 @@ function saveRisk(){
   r.phasing=normalizePhasing(r);
   ensureMercuryOverrides(r);
   syncPlanningGuideFromPhasing(r);
-  r.owner=normalizeSubsystem(r.owner||r.subsystem);
-  r.subsystem=r.owner;
+  const subsystem=riskSubsystem(r);
+  r.owner=subsystem;
+  r.subsystem=subsystem;
   r.number=parseInt(r.number,10)||0;
   if(!Number.isInteger(r.number)||r.number<1){toast('Risk number must be a positive integer',true);return;}
   const duplicate=DATA.risks.find(x=>x.id!==editingId&&+x.number===r.number);
@@ -2149,8 +2154,9 @@ function exportGeneratedPlanningGuides(){
 
   DATA.risks.forEach(r=>{
     if(exportError)return;
-    r.owner=normalizeSubsystem(r.owner||r.subsystem);
-    r.subsystem=r.owner||r.subsystem;
+    const subsystem=riskSubsystem(r);
+    r.owner=subsystem;
+    r.subsystem=subsystem;
     syncPlanningGuideFromPhasing(r);
     const p=normalizePhasing(r);
     const name=r.planningGuide||p.guide||"";
@@ -2176,7 +2182,7 @@ function exportGeneratedPlanningGuides(){
       if(!profileGuides.has(guideKey)){
         profileGuides.set(guideKey,{
           phase,
-          subsystem:r.subsystem||r.owner||"",
+          subsystem:riskSubsystem(r),
           name,
           currency,
           distribution,
