@@ -479,7 +479,7 @@ details.merc summary .tag{font-size:9.5px;font-family:var(--mono);background:var
       </div>
       <div style="display:flex;flex-direction:column;gap:18px">
         <div class="card">
-          <h3>Exposure by subsystem <span class="hint">residual value in target currency</span></h3>
+          <h3>Provision by subsystem <span class="hint">recommended provision in target currency</span></h3>
           <div class="bars" id="bars-sub"></div>
         </div>
         <div class="card">
@@ -1454,12 +1454,12 @@ function toggleMatrixFilter(i,l){
 }
 
 function renderBars(){
-  // by subsystem -> residual
-  const sub={};DATA.risks.forEach(r=>{const v=valorize(r);const k=riskSubsystem(r)||'(not defined)';sub[k]=(sub[k]||0)+v.residual;});
+  // by subsystem -> recommended provision
+  const sub={};DATA.risks.forEach(r=>{const v=valorize(r);const k=riskSubsystem(r)||'(not defined)';sub[k]=(sub[k]||0)+v.provision;});
   const subArr=Object.entries(sub).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);
   const maxSub=Math.max(1,...subArr.map(x=>x[1]));
   document.getElementById('bars-sub').innerHTML = subArr.length?subArr.map(([k,v])=>bar(k,v,maxSub,f0(v))).join('')
-    :`<p style="color:var(--muted-2);font-size:12px;margin:0">No residual value has been entered yet. Enter a gross risk cost on an open risk.</p>`;
+    :`<p style="color:var(--muted-2);font-size:12px;margin:0">No recommended provision has been calculated yet. Enter a gross risk cost and provision percentage on an open risk.</p>`;
   // by category -> count
   const cat={};DATA.risks.forEach(r=>{const k=shortCat(r.cat);cat[k]=(cat[k]||0)+1;});
   const catArr=Object.entries(cat).sort((a,b)=>b[1]-a[1]);
