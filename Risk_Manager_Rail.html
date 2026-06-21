@@ -1,0 +1,2370 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rail Risk Console - Risk Register & Valuation</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+<style>
+:root{
+  --bg:#0E1822; --panel:#16242F; --panel-2:#1E3240; --line:#2A4150;
+  --txt:#E6EDF2; --muted:#8FA3B0; --muted-2:#5E7888;
+  --rail:#39C2D7;            /* electrification / interactive accent */
+  --rail-dim:#1f7d8c;
+  --ok:#2FBF71; --mod:#F4C04E; --und:#F08A24; --int:#E5484D; --none:#3A4F5E;
+  --r:10px; --r-s:7px;
+  --sans:'IBM Plex Sans',ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+  --shadow:0 8px 30px rgba(0,0,0,.35);
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{background:var(--bg);color:var(--txt);font-family:var(--sans);font-size:14px;line-height:1.45;
+  background-image:radial-gradient(1200px 600px at 80% -10%,rgba(57,194,215,.06),transparent 60%);min-height:100vh}
+button{font-family:inherit;cursor:pointer}
+input,select,textarea{font-family:inherit}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-thumb{background:var(--line);border-radius:6px}
+.mono{font-family:var(--mono)}
+
+/* ---------- App shell ---------- */
+.app-sidebar{position:fixed;left:0;top:0;bottom:0;width:230px;background:#0B1320;border-right:1px solid var(--line);
+  z-index:50;padding:18px 10px;display:flex;flex-direction:column;gap:20px}
+.brand{display:flex;align-items:center;gap:12px;min-width:0;padding:0 8px}
+.logo{width:34px;height:34px;border-radius:8px;background:linear-gradient(135deg,var(--rail),var(--rail-dim));
+  display:grid;place-items:center;flex:0 0 auto;box-shadow:0 0 0 1px rgba(57,194,215,.4) inset}
+.logo svg{width:20px;height:20px}
+.brand h1{font-size:15px;margin:0;font-weight:600;letter-spacing:.2px;white-space:nowrap}
+.brand .sub{font-size:11px;color:var(--muted);font-family:var(--mono)}
+.creator-credit{font-size:10.5px;color:var(--rail);font-family:var(--mono);font-weight:600;padding:0 8px;margin-top:-10px}
+.workspace-label{font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--muted-2);font-weight:600;padding:0 10px;margin-bottom:-10px}
+.sidebar-project{margin-top:auto;padding:0 6px}
+.sidebar-project .label{font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--muted-2);font-weight:600;margin:0 0 7px}
+.project-context{border:1px solid rgba(57,194,215,.32);background:rgba(57,194,215,.08);border-radius:8px;padding:9px 11px;
+  color:var(--txt);font-size:12.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.project-context:empty::before{content:"Untitled project";color:var(--muted)}
+
+/* ---------- Top bar ---------- */
+header.top{position:sticky;top:0;z-index:40;margin-left:230px;background:#16242F;
+  border-bottom:1px solid #2F4A5D;border-bottom-left-radius:10px;box-shadow:0 10px 22px rgba(0,0,0,.16)}
+.top-inner{padding:18px 22px 14px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.proj-meta{display:flex;gap:16px 14px;flex-wrap:wrap;width:100%;align-items:flex-end}
+.proj-meta .pm{display:flex;flex-direction:column;line-height:1.2;gap:4px}
+.proj-meta .pm label{font-size:9.5px;text-transform:uppercase;letter-spacing:.9px;color:#9FB7C8;font-weight:600}
+.proj-meta .pm input,.proj-meta .pm select{background:transparent;border:none;border-bottom:1px solid var(--line);color:var(--txt);
+  font-size:12.5px;padding:4px 0 5px;min-width:104px;font-family:var(--mono)}
+.proj-meta .pm select{background-color:var(--bg);color:var(--txt);border-radius:4px;padding-left:4px}
+.proj-meta .pm select option{background-color:var(--panel);color:var(--txt)}
+.proj-meta .pm input[type="date"]{background:#10202C;border:1px solid var(--line);border-radius:5px;padding:5px 8px;color:var(--txt)}
+.proj-meta .pm input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(1) brightness(1.35);opacity:.85;cursor:pointer}
+.proj-meta .pm input[type="date"]::-webkit-calendar-picker-indicator:hover{opacity:1}
+.proj-meta .pm input:focus,.proj-meta .pm select:focus{outline:none;border-color:var(--rail)}
+.proj-meta .pm:nth-child(1) select,.proj-meta .pm:nth-child(3) input{min-width:160px}
+.proj-meta .pm:nth-child(2){min-width:176px}
+.proj-meta .pm:nth-child(4) select,.proj-meta .pm:nth-child(9) input,.proj-meta .pm:nth-child(11) input{min-width:92px}
+
+/* ---------- Tabs ---------- */
+nav.tabs{display:flex;flex-direction:column;gap:7px}
+nav.tabs button{background:none;border:1px solid transparent;color:var(--txt);padding:9px 10px;font-size:13px;font-weight:600;
+  border-radius:7px;display:flex;align-items:center;gap:10px;text-align:left}
+nav.tabs button:hover{color:var(--txt)}
+nav.tabs button.active{color:var(--txt);border-color:#1F5E9E;background:#0E355B}
+nav.tabs button svg{width:16px;height:16px;color:var(--muted)}
+nav.tabs button.active svg{color:var(--rail)}
+nav.tabs button .cnt{font-family:var(--mono);font-size:10px;background:var(--panel-2);padding:1px 7px;border-radius:20px;color:var(--muted);margin-left:auto}
+nav.tabs button.active .cnt{background:rgba(57,194,215,.15);color:var(--rail)}
+
+main{margin-left:230px;padding:26px 22px 80px}
+.view{display:none}.view.active{display:block;animation:fade .25s ease}
+@keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+
+@media(max-width:900px){
+  .app-sidebar{position:static;width:auto;border-right:none;border-bottom:1px solid var(--line);padding:12px 12px 10px}
+  .brand{padding:0}
+  .creator-credit{padding:0;margin-top:-8px}
+  .workspace-label{display:none}
+  .sidebar-project{margin-top:0;padding:0}
+  .project-context{max-width:100%}
+  nav.tabs{flex-direction:row;overflow-x:auto;padding-bottom:2px}
+  nav.tabs button{white-space:nowrap;flex:0 0 auto}
+  header.top,main{margin-left:0}
+}
+
+h2.section{font-size:13px;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);font-weight:600;
+  margin:0 0 14px;display:flex;align-items:center;gap:10px}
+h2.section::after{content:"";flex:1;height:1px;background:var(--line)}
+
+/* ---------- KPI ---------- */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:26px}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:16px 18px;position:relative;overflow:hidden}
+.kpi::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--rail)}
+.kpi.k-int::before{background:var(--int)}.kpi.k-prov::before{background:var(--mod)}.kpi.k-res::before{background:var(--und)}
+.kpi .lab{font-size:10.5px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted)}
+.kpi .val{font-family:var(--mono);font-size:26px;font-weight:600;margin-top:6px;letter-spacing:-.5px}
+.kpi .unit{font-size:12px;color:var(--muted);font-weight:400}
+.kpi .delta{font-size:11px;color:var(--muted-2);margin-top:3px}
+.phase-cost-card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:18px;margin-bottom:26px}
+.phase-cost-card h3{margin:0 0 6px;font-size:13px;font-weight:600}
+.phase-cost-card p{margin:0 0 14px;color:var(--muted);font-size:12px}
+.phase-cost-card input{background:var(--panel-2);border:1px solid var(--line);color:var(--txt);padding:7px 9px;border-radius:var(--r-s);width:120px;font-family:var(--mono)}
+.phase-cost-card input:focus{outline:none;border-color:var(--rail)}
+.phase-cost-card table{font-size:12px}
+.phase-cost-card td,.phase-cost-card th{padding:9px 10px}
+
+/* ---------- Layout dashboard ---------- */
+.dash-grid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:18px}
+@media(max-width:900px){.dash-grid{grid-template-columns:1fr}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:18px}
+.card h3{margin:0 0 14px;font-size:13px;font-weight:600;letter-spacing:.3px;display:flex;align-items:center;gap:8px}
+.card h3 .hint{font-size:11px;color:var(--muted-2);font-weight:400;font-family:var(--mono)}
+
+/* ---------- Matrice ---------- */
+.matrix-wrap{display:flex;gap:10px;align-items:stretch}
+.m-ylab{writing-mode:vertical-rl;transform:rotate(180deg);text-align:center;font-size:10px;letter-spacing:1px;
+  text-transform:uppercase;color:var(--muted-2);padding:18px 0;flex:0 0 auto}
+.matrix{display:grid;grid-template-columns:84px repeat(4,1fr);gap:5px;flex:1}
+.m-head,.m-side{font-size:10.5px;color:var(--muted);display:flex;align-items:center;justify-content:center;text-align:center;
+  font-weight:500;padding:4px;min-height:26px}
+.m-side{justify-content:flex-end;padding-right:8px;line-height:1.15}
+.m-corner{grid-column:1;grid-row:1}
+.cell{border-radius:var(--r-s);min-height:50px;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  color:#0b1620;font-weight:600;position:relative;cursor:pointer;transition:transform .12s,box-shadow .12s;border:1px solid rgba(0,0,0,.15)}
+.cell:hover{transform:translateY(-2px);box-shadow:0 6px 16px rgba(0,0,0,.3);z-index:2}
+.cell .c-n{font-family:var(--mono);font-size:19px;line-height:1}
+.cell .c-s{font-size:9px;opacity:.7;font-weight:600;font-family:var(--mono)}
+.cell.empty{color:rgba(11,22,32,.35)}
+.m-xlab{text-align:center;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--muted-2);margin-top:8px}
+.legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:14px;font-size:11px;color:var(--muted)}
+.legend span{display:flex;align-items:center;gap:6px}
+.dot{width:10px;height:10px;border-radius:3px;display:inline-block}
+
+/* ---------- Bar charts ---------- */
+.bars{display:flex;flex-direction:column;gap:9px}
+.bar-row{display:grid;grid-template-columns:130px 1fr 60px;align-items:center;gap:10px;font-size:12px}
+.bar-row .bn{color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar-track{height:18px;background:var(--panel-2);border-radius:5px;overflow:hidden}
+.bar-fill{height:100%;background:linear-gradient(90deg,var(--rail-dim),var(--rail));border-radius:5px;min-width:2px;transition:width .4s}
+.bar-row .bv{font-family:var(--mono);text-align:right;color:var(--txt)}
+
+/* ---------- Toolbar ---------- */
+.toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
+.btn{background:var(--panel-2);border:1px solid var(--line);color:var(--txt);padding:9px 15px;border-radius:var(--r-s);
+  font-size:13px;font-weight:500;display:inline-flex;align-items:center;gap:7px;transition:.15s}
+.btn:hover{border-color:var(--rail);color:var(--rail)}
+.btn.primary{background:var(--rail);color:#06222a;border-color:var(--rail);font-weight:600}
+.btn.primary:hover{background:#4fd0e4;color:#06222a}
+.btn.ghost{background:none}
+.btn.danger:hover{border-color:var(--int);color:var(--int)}
+.btn svg{width:15px;height:15px}
+.icon-btn{width:30px;height:30px;padding:0;border-radius:6px;justify-content:center}
+.icon-btn svg{width:15px;height:15px}
+.icon-btn.danger{color:var(--muted-2)}
+.icon-btn.danger:hover{color:var(--int);border-color:var(--int);background:rgba(229,72,77,.08)}
+.row-actions{display:flex;justify-content:flex-end;gap:6px}
+.search{flex:1;min-width:160px;position:relative}
+.search input{width:100%;background:var(--panel);border:1px solid var(--line);color:var(--txt);padding:9px 12px 9px 34px;
+  border-radius:var(--r-s);font-size:13px}
+.search input:focus{outline:none;border-color:var(--rail)}
+.search svg{position:absolute;left:11px;top:50%;transform:translateY(-50%);width:15px;height:15px;color:var(--muted-2)}
+select.filter{background:var(--panel);border:1px solid var(--line);color:var(--txt);padding:9px 11px;border-radius:var(--r-s);font-size:13px}
+select.filter:focus{outline:none;border-color:var(--rail)}
+
+/* ---------- Table ---------- */
+.table-wrap{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+thead th{background:var(--panel-2);text-align:left;padding:10px 12px;font-size:10.5px;text-transform:uppercase;
+  letter-spacing:.6px;color:var(--muted);font-weight:600;border-bottom:1px solid var(--line);white-space:nowrap}
+thead th.num,td.num{text-align:right;font-family:var(--mono)}
+tbody td{padding:11px 12px;border-bottom:1px solid rgba(42,65,80,.5);vertical-align:middle}
+tbody tr{cursor:pointer;transition:background .1s}
+tbody tr:hover{background:rgba(57,194,215,.05)}
+tbody tr:last-child td{border-bottom:none}
+.rid{font-family:var(--mono);color:var(--rail);font-weight:600}
+.desc-cell{max-width:280px}
+.desc-cell .d1{color:var(--txt);font-weight:500}
+.desc-cell .d2{color:var(--muted-2);font-size:11px;font-family:var(--mono);margin-top:2px}
+.chip{display:inline-flex;align-items:center;gap:5px;padding:2px 9px;border-radius:20px;font-size:10.5px;font-weight:600;
+  white-space:nowrap}
+.chip .dot{width:7px;height:7px}
+.pf-Acceptable{background:rgba(47,191,113,.15);color:var(--ok)}
+.pf-Moderate{background:rgba(244,192,78,.15);color:var(--mod)}
+.pf-Undesirable{background:rgba(240,138,36,.15);color:var(--und)}
+.pf-Intolerable{background:rgba(229,72,77,.15);color:var(--int)}
+.pf-None{background:rgba(94,120,136,.15);color:var(--muted)}
+.st{font-size:11px;padding:2px 8px;border-radius:5px;font-family:var(--mono)}
+.st-Open{background:rgba(57,194,215,.13);color:var(--rail)}
+.st-closed{background:rgba(94,120,136,.13);color:var(--muted)}
+.act-count{font-family:var(--mono);font-size:11px;color:var(--muted)}
+.act-count b{color:var(--rail)}
+.empty-state{text-align:center;padding:60px 20px;color:var(--muted)}
+.empty-state svg{width:46px;height:46px;color:var(--muted-2);margin-bottom:14px}
+.empty-state h3{margin:0 0 6px;color:var(--txt);font-weight:600}
+
+/* ---------- Drawer ---------- */
+.overlay{position:fixed;inset:0;background:rgba(6,13,19,.6);backdrop-filter:blur(2px);z-index:60;opacity:0;
+  pointer-events:none;transition:.2s}
+.overlay.open{opacity:1;pointer-events:auto}
+.drawer{position:fixed;top:0;right:0;height:100%;width:min(720px,96vw);background:var(--bg);border-left:1px solid var(--line);
+  z-index:70;transform:translateX(100%);transition:transform .28s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;
+  box-shadow:var(--shadow)}
+.drawer.open{transform:none}
+.drawer-head{padding:18px 24px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px;flex:0 0 auto}
+.drawer-head .rid{font-size:16px}
+.drawer-head h3{margin:0;font-size:15px;font-weight:600;flex:1}
+.drawer-head .x{background:none;border:none;color:var(--muted);font-size:22px;line-height:1;padding:4px 8px;border-radius:6px}
+.drawer-head .x:hover{background:var(--panel-2);color:var(--txt)}
+.drawer-body{overflow-y:auto;padding:20px 24px;flex:1}
+.drawer-foot{padding:14px 24px;border-top:1px solid var(--line);display:flex;gap:10px;justify-content:space-between;flex:0 0 auto;
+  background:var(--panel)}
+
+.fgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px 16px}
+.fgrid .full{grid-column:1/-1}
+.field{display:flex;flex-direction:column;gap:5px}
+.field label{font-size:11px;color:var(--muted);font-weight:500;display:flex;align-items:center;gap:6px}
+.field label .req{color:var(--int)}
+.field input,.field select,.field textarea{background:var(--panel);border:1px solid var(--line);color:var(--txt);
+  padding:9px 11px;border-radius:var(--r-s);font-size:13px;width:100%}
+.field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--rail)}
+.field textarea{resize:vertical;min-height:60px}
+.field .help{font-size:10.5px;color:var(--muted-2)}
+.template-box{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:14px;margin-bottom:18px;
+  display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:end}
+@media(max-width:560px){.template-box{grid-template-columns:1fr}.template-box .btn{justify-content:center}}
+.phasing-box{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:16px;margin:18px 0}
+.phasing-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+.phasing-head strong{font-size:13px}
+.phasing-summary{font-family:var(--mono);font-size:11px;color:var(--rail);background:rgba(57,194,215,.08);
+  border:1px solid rgba(57,194,215,.25);border-radius:var(--r-s);padding:8px 10px;margin-top:12px}
+.custom-period-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px}
+.custom-period-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(112px,1fr));gap:8px}
+.custom-period-cell{background:var(--panel-2);border:1px solid var(--line);border-radius:var(--r-s);padding:8px}
+.custom-period-cell label{font-family:var(--mono);font-size:10px;color:var(--muted-2);margin-bottom:5px}
+.custom-period-total{font-family:var(--mono);font-size:11px;color:var(--muted-2)}
+.custom-period-total.ok{color:var(--ok)}
+.custom-period-total.bad{color:var(--int)}
+
+.assess-box{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:16px;margin:18px 0;
+  display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;align-items:end}
+.assess-out{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;
+  background:var(--panel-2);border-radius:var(--r-s);padding:10px}
+.assess-out .ao-lab{font-size:10px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted-2)}
+.assess-out .ao-val{font-family:var(--mono);font-size:17px;font-weight:600}
+
+.valo-box{background:linear-gradient(135deg,rgba(57,194,215,.07),transparent);border:1px solid var(--line);
+  border-radius:var(--r);padding:16px;margin:18px 0}
+.valo-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(105px,1fr));gap:12px;margin-top:12px}
+@media(max-width:560px){.valo-grid{grid-template-columns:1fr 1fr}.assess-box{grid-template-columns:1fr}.fgrid{grid-template-columns:1fr}}
+.valo-cell{text-align:center}
+.valo-cell .vl{font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted-2);min-height:24px}
+.valo-cell .vv{font-family:var(--mono);font-size:17px;font-weight:600;margin-top:4px}
+.valo-cell.accent .vv{color:var(--rail)}
+.valo-note{font-family:var(--mono);font-size:10.5px;color:var(--muted-2);margin-top:10px}
+
+/* ---------- Actions list ---------- */
+.acc{border:1px solid var(--line);border-radius:var(--r);margin-top:8px;overflow:hidden}
+.acc-h{padding:13px 16px;display:flex;align-items:center;gap:10px;background:var(--panel);cursor:pointer}
+.acc-h h4{margin:0;font-size:13px;font-weight:600;flex:1}
+.action-item{border-top:1px solid var(--line);padding:14px 16px;background:var(--panel-2)}
+.action-item .ai-top{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.action-item .ai-num{font-family:var(--mono);font-size:12px;background:var(--bg);padding:2px 8px;border-radius:5px;color:var(--rail)}
+.action-item .ai-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.mini-btn{background:none;border:1px solid var(--line);color:var(--muted);padding:5px 9px;border-radius:5px;font-size:11px}
+.mini-btn:hover{border-color:var(--rail);color:var(--rail)}
+.mini-btn.del:hover{border-color:var(--int);color:var(--int)}
+.progress{height:6px;background:var(--bg);border-radius:4px;overflow:hidden;margin-top:8px}
+.progress > i{display:block;height:100%;background:var(--ok);border-radius:4px}
+
+/* ---------- Advanced/Mercury ---------- */
+details.merc{margin-top:18px;border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+details.merc summary{padding:13px 16px;background:var(--panel);font-size:12.5px;font-weight:600;cursor:pointer;
+  list-style:none;display:flex;align-items:center;gap:9px;color:var(--muted)}
+details.merc summary::-webkit-details-marker{display:none}
+details.merc[open] summary{color:var(--txt);border-bottom:1px solid var(--line)}
+details.merc summary .tag{font-size:9.5px;font-family:var(--mono);background:var(--panel-2);padding:1px 7px;border-radius:20px;
+  margin-left:auto;color:var(--rail)}
+.merc-body{padding:16px;background:var(--panel-2)}
+.merc-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px 18px}
+@media(max-width:560px){.merc-grid{grid-template-columns:1fr 1fr}}
+.merc-grid .mc{display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid rgba(42,65,80,.4);font-size:11.5px}
+.merc-grid .mc .mk{color:var(--muted-2)}
+.merc-grid .mc .mv{font-family:var(--mono);color:var(--txt);text-align:right}
+.merc-grid .mc .mv.auto{color:var(--muted)}
+.merc-note{font-size:11px;color:var(--muted-2);margin:0 0 12px}
+
+/* ---------- Rules ---------- */
+.rules-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+@media(max-width:880px){.rules-grid{grid-template-columns:1fr}.dash-grid{grid-template-columns:1fr}}
+.rule-card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:20px}
+.rule-card h3{margin:0 0 12px;font-size:14px;display:flex;align-items:center;gap:9px}
+.rule-card p{color:var(--muted);font-size:12.5px;margin:0 0 12px}
+.rule-card table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:12px;margin-top:8px}
+.rule-card td,.rule-card th{padding:8px 10px;text-align:left;vertical-align:middle;border-bottom:1px solid rgba(42,65,80,.5)}
+.rule-card tr:last-child td{border-bottom:none}
+.rule-card th{color:var(--muted);font-size:10.5px;text-transform:uppercase;letter-spacing:.5px}
+.rule-card th.num,.rule-card td.num{text-align:right;font-family:var(--mono)}
+.formula{font-family:var(--mono);font-size:12px;background:var(--bg);border:1px solid var(--line);border-left:3px solid var(--rail);
+  border-radius:var(--r-s);padding:11px 14px;margin:8px 0;color:var(--txt);overflow-x:auto;white-space:nowrap}
+.fx-panel{display:grid;grid-template-columns:minmax(180px,.8fr) minmax(220px,1fr);gap:18px;margin-bottom:18px}
+.fx-summary{background:var(--panel-2);border:1px solid var(--line);border-radius:var(--r);padding:16px}
+.fx-summary h4{margin:0 0 8px;font-size:16px}
+.fx-summary p{margin:0;color:var(--muted);font-size:12px}
+.fx-live{background:var(--panel-2);border:1px solid var(--line);border-radius:var(--r);padding:16px;display:flex;justify-content:space-between;gap:14px;align-items:center}
+.fx-live .lab{font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted-2);font-weight:600}
+.fx-live .src{font-family:var(--mono);font-size:12px;color:var(--txt);margin-top:5px}
+.fx-table{max-height:360px;overflow-y:auto}
+.fx-table table{table-layout:fixed;width:100%}
+.fx-table th,.fx-table td{vertical-align:middle}
+.fx-table th:nth-child(1),.fx-table td:nth-child(1){width:18%}
+.fx-table th:nth-child(2),.fx-table td:nth-child(2){width:18%;text-align:right}
+.fx-table th:nth-child(3),.fx-table td:nth-child(3){width:25%;text-align:left}
+.fx-table th:nth-child(4),.fx-table td:nth-child(4){width:22%;text-align:right}
+.fx-table th:nth-child(5),.fx-table td:nth-child(5){width:17%;text-align:left}
+.fx-table input{background:var(--panel);border:1px solid var(--line);color:var(--txt);padding:7px 9px;border-radius:var(--r-s);width:130px;font-family:var(--mono)}
+.fx-table input:focus{outline:none;border-color:var(--rail)}
+@media(max-width:780px){.fx-panel{grid-template-columns:1fr}.fx-live{align-items:flex-start;flex-direction:column}}
+
+/* ---------- Export ---------- */
+.exp-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px}
+.exp-card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:22px;display:flex;flex-direction:column;gap:12px}
+.exp-card .ec-ico{width:40px;height:40px;border-radius:10px;background:var(--panel-2);display:grid;place-items:center}
+.exp-card .ec-ico svg{width:22px;height:22px;color:var(--rail)}
+.exp-card h3{margin:0;font-size:15px}
+.exp-card p{margin:0;color:var(--muted);font-size:12.5px;flex:1}
+
+/* ---------- Toast ---------- */
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--panel);
+  border:1px solid var(--rail);border-radius:var(--r-s);padding:12px 20px;font-size:13px;z-index:100;opacity:0;
+  pointer-events:none;transition:.25s;box-shadow:var(--shadow);display:flex;align-items:center;gap:9px}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+#toast svg{width:16px;height:16px;color:var(--rail)}
+
+/* ---------- Access lock ---------- */
+.auth-lock{position:fixed;inset:0;z-index:300;background:linear-gradient(135deg,#08111B,#102231 58%,#0B1824);
+  display:grid;place-items:center;padding:24px}
+.auth-lock.hidden{display:none}
+.auth-stack{width:min(390px,100%);display:flex;flex-direction:column;gap:14px;align-items:stretch}
+.auth-card{width:min(390px,100%);background:var(--panel);border:1px solid #315164;border-radius:var(--r);
+  box-shadow:var(--shadow);padding:28px}
+.auth-head{display:flex;align-items:center;gap:13px;margin-bottom:22px}
+.auth-head h2{margin:0;font-size:19px;font-weight:700}
+.auth-head .sub{font-size:12px;color:var(--muted);font-family:var(--mono);margin-top:2px}
+.auth-card label{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.9px;color:#9FB7C8;font-weight:600;margin-bottom:7px}
+.auth-card input{width:100%;background:#10202C;border:1px solid var(--line);border-radius:var(--r-s);color:var(--txt);
+  padding:11px 12px;font-family:var(--mono);font-size:14px;margin-bottom:12px}
+.auth-card input:focus{outline:none;border-color:var(--rail);box-shadow:0 0 0 3px rgba(57,194,215,.12)}
+.auth-card button{width:100%;justify-content:center}
+.auth-error{min-height:18px;margin:10px 0 0;color:var(--int);font-size:12px}
+.auth-support{background:var(--panel);border:1px solid #315164;border-radius:var(--r);padding:18px 20px;text-align:center;
+  color:#B4C7D6;font-size:12.5px;line-height:1.45;box-shadow:0 8px 22px rgba(0,0,0,.22)}
+.auth-support strong{color:var(--txt)}
+.auth-support a{color:var(--rail);text-decoration:none;font-weight:600}
+.auth-support a:hover{text-decoration:underline}
+.auth-credit{text-align:center;color:#8FA3B0;font-size:12px;font-weight:600;margin:4px 0 0}
+.danger-txt{color:var(--int)}
+.hidden-file{display:none}
+</style>
+</head>
+<body>
+
+<div id="auth-lock" class="auth-lock">
+  <div class="auth-stack">
+    <form class="auth-card" onsubmit="return unlockApp(event)">
+      <div class="auth-head">
+        <div class="logo" title="Rail Risk Console">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#06222a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 20l4-9M20 20l-4-9M8 11h8M6 11l1-7h10l1 7M9 4v7M15 4v7M2 20h20"/>
+          </svg>
+        </div>
+        <div>
+          <h2>Rail Risk Console</h2>
+          <div class="sub">Restricted access</div>
+        </div>
+      </div>
+      <label for="auth-password">Password</label>
+      <input id="auth-password" type="password" autocomplete="current-password" autofocus>
+      <button class="btn primary" type="submit">Access console</button>
+      <p id="auth-error" class="auth-error"></p>
+    </form>
+    <div class="auth-support">
+      For access requests, technical assistance, or any support related to the use of this tool, please contact the administrator,
+      <strong>Mohamed BOUDIA</strong>, by email at <a href="mailto:mohamed.boudia@alstomgroup.com">mohamed.boudia@alstomgroup.com</a>.
+    </div>
+    <div class="auth-credit">Created by Mohamed BOUDIA</div>
+  </div>
+</div>
+
+<aside class="app-sidebar">
+  <div class="brand">
+    <div class="logo" title="Rail Risk Console">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#06222a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4 20l4-9M20 20l-4-9M8 11h8M6 11l1-7h10l1 7M9 4v7M15 4v7M2 20h20"/>
+      </svg>
+    </div>
+    <div>
+      <h1>Rail Risk Console</h1>
+      <div class="sub">Railway infrastructure maintenance</div>
+    </div>
+  </div>
+  <div class="creator-credit">Created by Mohamed BOUDIA</div>
+  <div class="workspace-label">Workspace</div>
+  <nav class="tabs">
+    <button data-view="dash" class="active">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>
+      Dashboard
+    </button>
+    <button data-view="register">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13M8 12h13M8 18h13"/><path d="M3 6h.01M3 12h.01M3 18h.01"/></svg>
+      Risk register <span class="cnt" id="tab-cnt">0</span>
+    </button>
+    <button data-view="rules">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5z"/></svg>
+      Reference & rules
+    </button>
+    <button data-view="export">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
+      Export & save
+    </button>
+  </nav>
+  <div class="sidebar-project">
+    <div class="label">Project</div>
+    <div class="project-context" id="sidebar-project-name" title=""></div>
+  </div>
+</aside>
+
+<header class="top">
+  <div class="top-inner">
+    <div class="proj-meta">
+      <div class="pm"><label>Saved project</label><select id="project-select"></select></div>
+      <div class="pm"><label>Project actions</label><div style="display:flex;gap:6px">
+        <button class="mini-btn" onclick="newProject()">New</button>
+        <button class="mini-btn" onclick="duplicateProject()">Duplicate</button>
+        <button class="mini-btn del" onclick="deleteProject()">Delete</button>
+      </div></div>
+      <div class="pm"><label>Project</label><input id="meta-project" placeholder="Project name"></div>
+      <div class="pm"><label>Type</label><select id="meta-code"><option>Metro</option><option>Tram</option><option>APM</option><option>Mainline</option><option>Monorail</option><option>Custom</option></select></div>
+      <div class="pm" id="meta-type-custom-wrap" style="display:none"><label>Custom type</label><input id="meta-type-custom" placeholder="Type"></div>
+      <div class="pm"><label>Project code</label><input id="meta-project-code" placeholder="CDG"></div>
+      <div class="pm"><label>Risk code</label><input id="meta-risk-code" placeholder="RISK"></div>
+      <div class="pm"><label>Date</label><input id="meta-date" type="date"></div>
+      <div class="pm"><label>Contract start</label><input id="meta-start-date" type="date"></div>
+      <div class="pm"><label>Duration</label><input id="meta-duration" type="number" min="1" max="80" placeholder="30"></div>
+      <div class="pm"><label>Target currency</label><select id="meta-currency"></select></div>
+      <div class="pm" id="meta-currency-custom-wrap" style="display:none"><label>Custom currency</label><input id="meta-currency-custom" placeholder="Currency"></div>
+    </div>
+  </div>
+</header>
+
+<main>
+  <!-- ============ DASHBOARD ============ -->
+  <section class="view active" id="view-dash">
+    <div class="kpis" id="kpis"></div>
+    <div class="phase-cost-card" id="phase-cost-card"></div>
+    <div class="dash-grid">
+      <div class="card">
+        <h3>Criticality matrix <span class="hint">Impact x likelihood - click a cell to filter</span></h3>
+        <div class="matrix-wrap">
+          <div class="m-ylab">Impact</div>
+          <div class="matrix" id="matrix"></div>
+        </div>
+        <div class="m-xlab">Likelihood -></div>
+        <div class="legend">
+          <span><i class="dot" style="background:var(--ok)"></i>Acceptable</span>
+          <span><i class="dot" style="background:var(--mod)"></i>Moderate</span>
+          <span><i class="dot" style="background:var(--und)"></i>Undesirable</span>
+          <span><i class="dot" style="background:var(--int)"></i>Intolerable</span>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:18px">
+        <div class="card">
+          <h3>Exposure by subsystem <span class="hint">residual value in target currency</span></h3>
+          <div class="bars" id="bars-sub"></div>
+        </div>
+        <div class="card">
+          <h3>Risks by category</h3>
+          <div class="bars" id="bars-cat"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ REGISTER ============ -->
+  <section class="view" id="view-register">
+    <div class="toolbar">
+      <button class="btn primary" onclick="openRisk(null)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+        New risk</button>
+      <button class="btn danger" onclick="deleteAllRisks()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+        Clear register</button>
+      <div class="search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg>
+        <input id="search" placeholder="Search description, owner, unit..." oninput="renderTable()">
+      </div>
+      <select class="filter" id="filt-profile" onchange="renderTable()"><option value="">All profiles</option></select>
+      <select class="filter" id="filt-status" onchange="renderTable()"><option value="">All statuses</option></select>
+      <select class="filter" id="filt-cat" onchange="renderTable()"><option value="">All categories</option></select>
+    </div>
+    <div class="table-wrap" id="table-wrap"></div>
+  </section>
+
+  <!-- ============ RULES ============ -->
+  <section class="view" id="view-rules">
+    <h2 class="section">Risk Management Reference</h2>
+    <div class="rules-grid">
+      <div class="rule-card">
+        <h3>Qualitative Assessment Scales</h3>
+        <p>Each risk is scored on two axes. Score = <b>Impact x Likelihood</b>.</p>
+        <table>
+          <tr><th>Impact</th><th class="num">Weight</th><th>Likelihood</th><th class="num">Weight</th></tr>
+          <tr><td>Insignificant</td><td class="num">1</td><td>Rarely</td><td class="num">1</td></tr>
+          <tr><td>Marginal</td><td class="num">2</td><td>Occasionally</td><td class="num">2</td></tr>
+          <tr><td>Critical</td><td class="num">3</td><td>Often</td><td class="num">3</td></tr>
+          <tr><td>Highly Critical</td><td class="num">4</td><td>Frequently</td><td class="num">4</td></tr>
+        </table>
+        <p style="margin-top:10px;font-size:11.5px">The score remains Impact x Likelihood, but the risk profile is assigned through the explicit matrix below.</p>
+      </div>
+      <div class="rule-card">
+        <h3>Risk Profile Matrix</h3>
+        <p>The profile is defined explicitly, so a Highly Critical impact is never classified as Acceptable.</p>
+        <table>
+          <tr><th>Impact / Likelihood</th><th>Rarely</th><th>Occasionally</th><th>Often</th><th>Frequently</th></tr>
+          <tr><td>Insignificant</td><td>Acceptable</td><td>Acceptable</td><td>Acceptable</td><td>Acceptable</td></tr>
+          <tr><td>Marginal</td><td>Acceptable</td><td>Acceptable</td><td>Moderate</td><td>Moderate</td></tr>
+          <tr><td>Critical</td><td>Acceptable</td><td>Moderate</td><td>Undesirable</td><td>Undesirable</td></tr>
+          <tr><td>Highly Critical</td><td>Moderate</td><td>Moderate</td><td>Undesirable</td><td>Intolerable</td></tr>
+        </table>
+      </div>
+      <div class="rule-card">
+        <h3>Valuation Rules</h3>
+        <p>All values are entered in <b>kLocal currency</b> and converted to the selected target currency through the FX table.</p>
+        <div class="formula">Gross value (target currency) = Local value x effective FX rate</div>
+        <div class="formula">Effective reduction = Open: target x progress; Implemented: target; Abandoned: 0</div>
+        <div class="formula">Effective cost = Open/Abandoned: target x progress; Implemented: target</div>
+        <div class="formula">Occurrences = Recurrent annual: End year - Start year + 1; all other modes: 1</div>
+        <div class="formula">Total residual value = (Gross - Effect + Cost) x Occurrences when status = Open, otherwise 0</div>
+        <div class="formula">Total provision = Total residual value x provision %</div>
+        <p style="font-size:11.5px">The provision percentage is adjustable per risk (25% by default; 20% observed on some lines).</p>
+      </div>
+      <div class="rule-card">
+        <h3>Automatic Mapping to Mercury</h3>
+        <p>These columns are not entered manually: they are derived during export.</p>
+        <table>
+          <tr><th>Mercury column</th><th>Rule</th></tr>
+          <tr><td class="mono">RISK ID</td><td>"Infra IR_RISK" + number</td></tr>
+          <tr><td class="mono">ABS</td><td>M800 by default, editable with Manual Mercury overrides</td></tr>
+          <tr><td class="mono">Associated WP</td><td>copied from Work Package / Function</td></tr>
+          <tr><td class="mono">CARAT / Role / Shore / Tasks</td><td>LOCAL / LU / Onshore / PMGAD by default, editable with Manual Mercury overrides</td></tr>
+          <tr><td class="mono">Delegated</td><td>INFRA / Risk type IR</td></tr>
+          <tr><td class="mono">Price List 1</td><td>RISK (fixed)</td></tr>
+          <tr><td class="mono">Nb / Quantity</td><td>1 / 1 (fixed)</td></tr>
+          <tr><td class="mono">Fixed Conting.</td><td>unit provision converted back to risk currency x 1000</td></tr>
+        </table>
+        <p style="font-size:11px;margin-top:10px">To be defined by the user: <b>Risk Application planning guide</b>, <b>Work Package / Function</b>, <b>Price List Code 2</b> activity and <b>Subsystem</b>.</p>
+      </div>
+      <div class="rule-card full" style="grid-column:1/-1">
+        <h3>FX Rate Table</h3>
+        <div class="fx-panel">
+          <div class="fx-summary">
+            <h4 id="fx-project-title">Project</h4>
+            <p id="fx-project-subtitle">Target currency: EUR</p>
+          </div>
+          <div class="fx-live">
+            <div>
+              <div class="lab">Live source</div>
+              <div class="src" id="fx-live-source">Fallback rates</div>
+            </div>
+            <button class="btn" onclick="refreshLiveFxRates()">Refresh live rates</button>
+          </div>
+        </div>
+        <p>Rates are displayed for conversion from each project source currency to the selected target currency.</p>
+        <div class="fx-table"><table id="fx-table"></table></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ EXPORT ============ -->
+  <section class="view" id="view-export">
+    <h2 class="section">Export & Save</h2>
+    <div class="exp-grid">
+      <div class="exp-card">
+        <div class="ec-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4z"/><path d="M4 9h16M9 4v16"/></svg></div>
+        <h3>Mercury Sheet (.xlsx)</h3>
+        <p>Generates the file expected by the costing tool: the configuration columns are rebuilt from mapping rules.</p>
+        <button class="btn primary" onclick="exportMercury()">Export for Mercury</button>
+      </div>
+      <div class="exp-card">
+        <div class="ec-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M9 13h6M9 17h6"/></svg></div>
+        <h3>Full Register (.xlsx)</h3>
+        <p>The readable register (identification + assessment + valuation) plus the action plan sheet, for archive or review.</p>
+        <button class="btn" onclick="exportFull()">Export register</button>
+      </div>
+      <div class="exp-card">
+        <div class="ec-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5-5 5 5M12 5v12"/></svg></div>
+        <h3>Planning guides (.xlsx)</h3>
+        <p>Imports annual overhaul/renewal guide profiles and mobilisation/recurring/demob periods.</p>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <button class="btn" onclick="document.getElementById('load-guides').click()">Import guides</button>
+          <button class="btn" onclick="exportGeneratedPlanningGuides()">Export generated guides</button>
+          <input type="file" id="load-guides" class="hidden-file" accept=".xlsx,.xlsm,.xls" onchange="loadPlanningGuides(this)">
+        </div>
+        <p id="guide-import-status" class="mono" style="font-size:11px;color:var(--muted-2);margin:0"></p>
+      </div>
+      <div class="exp-card">
+        <div class="ec-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg></div>
+        <h3>Save Project (.json)</h3>
+        <p>All project data in a file that can be re-imported later or shared with a colleague.</p>
+        <div style="display:flex;gap:10px">
+          <button class="btn" onclick="saveJSON()">Save</button>
+          <button class="btn ghost" onclick="document.getElementById('load-json').click()">Load...</button>
+          <input type="file" id="load-json" class="hidden-file" accept=".json" onchange="loadJSON(this)">
+        </div>
+      </div>
+      <div class="exp-card">
+        <div class="ec-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></div>
+        <h3>Reset</h3>
+        <p>Clears the register and reloads the sample set (template risks + one valued demo risk).</p>
+        <button class="btn danger" onclick="resetAll()">Reset to examples</button>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- ============ DRAWER ============ -->
+<div class="overlay" id="overlay" onclick="closeRisk()"></div>
+<aside class="drawer" id="drawer">
+  <div class="drawer-head">
+    <span class="rid" id="dr-rid">#-</span>
+    <h3 id="dr-title">New risk</h3>
+    <button class="x" onclick="closeRisk()">x</button>
+  </div>
+  <div class="drawer-body" id="drawer-body"><!-- injected --></div>
+  <div class="drawer-foot">
+    <button class="btn danger ghost" id="dr-delete" onclick="deleteRisk()">Delete</button>
+    <div style="display:flex;gap:10px;margin-left:auto">
+      <button class="btn ghost" onclick="closeRisk()">Cancel</button>
+      <button class="btn primary" onclick="saveRisk()">Save</button>
+    </div>
+  </div>
+</aside>
+
+<div id="toast"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg><span id="toast-msg"></span></div>
+
+<script>
+/* =================== REFERENCE DATA =================== */
+const DEFAULT_FX_EUR_BASE = {EUR:1,USD:1.0695,GBP:0.8692,SGD:1.4508,INR:89.0487,PLN:4.4397,CNY:7.8017,SAR:4.0114,AED:3.7623687873885396,BRL:6.23};
+const FX = DEFAULT_FX_EUR_BASE;
+const LIVE_FX_API="https://open.er-api.com/v6/latest";
+const LIVE_FX_LABEL="https://www.exchangerate-api.com";
+const IMPACTS={Insignificant:1,Marginal:2,Critical:3,"Highly Critical":4};
+const LIKE={Rarely:1,Occasionally:2,Often:3,Frequently:4};
+const PROFILE_MATRIX={
+  Insignificant:{Rarely:"Acceptable",Occasionally:"Acceptable",Often:"Acceptable",Frequently:"Acceptable"},
+  Marginal:{Rarely:"Acceptable",Occasionally:"Acceptable",Often:"Moderate",Frequently:"Moderate"},
+  Critical:{Rarely:"Acceptable",Occasionally:"Moderate",Often:"Undesirable",Frequently:"Undesirable"},
+  "Highly Critical":{Rarely:"Moderate",Occasionally:"Moderate",Often:"Undesirable",Frequently:"Intolerable"}
+};
+const CATEGORIES=["Customer / Partner / Sub-contractor / key Supplier","General Environment / Country","Contractual obligations","Financial / Tax / Customs","Technical","Industrial / Site Installation","Project Management","Others"];
+const STATUSES=["Open","Closed and Occurred","Closed and Not Occurred"];
+const ACTION_STATUSES=["Open","Closed - Implemented","Closed - Abandoned"];
+const SUBSYSTEMS=["Infra_Management","Track","Feeding_System","POS","PSD","DEQ","VMI","AFC","MEP"];
+const ACTIVITIES=["Labour","Spares and Material","Tools & Equipment","External Services","Travels","Vehicles","Training","Risks","Finance","Others costs","Obsolescence"];
+const PHASES=["RISK","MOB","REC MTC","RENEW","OVHL","OBSO","DEMOB"];
+const CARAT_UNITS=["LOCAL","RSC-5232","3597"];
+const UNIT_ROLE={LOCAL:{role:"LU",shore:"Onshore"},"RSC-5232":{role:"PU01",shore:"Offshore"},"3597":{role:"PU02",shore:"Offshore"}};
+const MERCURY_DEFAULTS={abs:"M800",caratUnit:"LOCAL",tasks:"PMGAD",unitRole:"LU",shore:"Onshore"};
+const PLANNING_GUIDES=["L1_REC_MNT_30_YEARS","L1_Contingencies_RENEW","L1_REC_MNT_POST_WAR_OPTION_4","L1_Contingencies_OVH"];
+const PHASING_MODES=[
+  {value:"mobilisation",label:"Mobilisation - one-shot"},
+  {value:"recurring",label:"Recurrent annual"},
+  {value:"demobilisation",label:"Demobilisation - one-shot"},
+  {value:"overhaulGuide",label:"Overhaul guide"},
+  {value:"renewalGuide",label:"Renewal guide"},
+  {value:"specificYear",label:"Specific contract year"},
+  {value:"contractPeriod",label:"Contract period"}
+];
+const CONTRACT_PERIODS=[
+  {value:"firstQuarter",label:"First quarter"},
+  {value:"secondQuarter",label:"Second quarter"},
+  {value:"thirdQuarter",label:"Third quarter"},
+  {value:"lastQuarter",label:"Last quarter"},
+  {value:"firstHalf",label:"First half"},
+  {value:"secondHalf",label:"Second half"},
+  {value:"custom",label:"Custom period"}
+];
+const RISK_TEMPLATES=[
+  {label:"Spares price / consumption uncertainty",owner:"ToBeDefined",wp:"WP0",cat:"Technical",impact:"Critical",like:"Occasionally",planningGuide:"L1_REC_MNT_30_YEARS",activity:"Spares and Material",subsystem:"ToBeDefined",desc:"Supplier data, unit prices or consumption assumptions for maintenance spares are not fully confirmed."},
+  {label:"Overhaul / renewal scope uncertainty",owner:"ToBeDefined",wp:"WP0",cat:"Technical",impact:"Critical",like:"Occasionally",planningGuide:"L1_Contingencies_OVH",activity:"Spares and Material",subsystem:"ToBeDefined",desc:"Overhaul or renewal quantities, scope boundaries or replacement cycles need confirmation before commitment."},
+  {label:"Corrective maintenance volume increase",owner:"ToBeDefined",wp:"WP0",cat:"Technical",impact:"Critical",like:"Often",planningGuide:"L1_REC_MNT_30_YEARS",activity:"Labour",subsystem:"ToBeDefined",desc:"Corrective maintenance workload may exceed the baseline due to defect recurrence, operating conditions or asset reliability."},
+  {label:"Premature wear / degradation",owner:"ToBeDefined",wp:"WP0",cat:"Technical",impact:"Highly Critical",like:"Often",planningGuide:"L1_Contingencies_RENEW",activity:"Spares and Material",subsystem:"ToBeDefined",desc:"Premature degradation may drive additional inspections, spares consumption or renewal activities."},
+  {label:"System availability / reliability issue",owner:"ToBeDefined",wp:"WP0",cat:"Technical",impact:"Highly Critical",like:"Occasionally",planningGuide:"L1_REC_MNT_POST_WAR_OPTION_4",activity:"External Services",subsystem:"ToBeDefined",desc:"Availability or reliability may be below expectations due to component performance, external dependencies or design assumptions."},
+  {label:"Maintenance roster / staffing increase",owner:"ToBeDefined",wp:"WP0",cat:"Project Management",impact:"Highly Critical",like:"Occasionally",planningGuide:"L1_REC_MNT_30_YEARS",activity:"Labour",subsystem:"ToBeDefined",desc:"Maintenance roster may require additional staff to cover preventive, corrective, on-call or 24/7 requirements."},
+  {label:"Skill availability / training gap",owner:"ToBeDefined",wp:"WP0",cat:"Project Management",impact:"Critical",like:"Occasionally",planningGuide:"L1_REC_MNT_30_YEARS",activity:"Training",subsystem:"ToBeDefined",desc:"Required technical skills may not be available at the expected level, generating training, support or subcontracting costs."},
+  {label:"On-call and overtime increase",owner:"ToBeDefined",wp:"WP0",cat:"Project Management",impact:"Highly Critical",like:"Rarely",planningGuide:"L1_REC_MNT_30_YEARS",activity:"Labour",subsystem:"ToBeDefined",desc:"On-call duties or overtime may exceed assumptions due to incident volume, access windows or operational constraints."},
+  {label:"Subcontractor dependency",owner:"ToBeDefined",wp:"WP0",cat:"Industrial / Site Installation",impact:"Critical",like:"Occasionally",planningGuide:"L1_REC_MNT_30_YEARS",activity:"External Services",subsystem:"ToBeDefined",desc:"Maintenance delivery depends on subcontractor availability, performance, mobilisation or pricing."},
+  {label:"OEM support / obsolescence limitation",owner:"ToBeDefined",wp:"WP0",cat:"Industrial / Site Installation",impact:"Critical",like:"Occasionally",planningGuide:"L1_Contingencies_RENEW",activity:"Obsolescence",subsystem:"ToBeDefined",desc:"OEM support, spare availability or product lifecycle limitations may create additional cost exposure."},
+  {label:"Asset condition worse than baseline",owner:"ToBeDefined",wp:"WP0",cat:"Technical",impact:"Critical",like:"Often",planningGuide:"L1_REC_MNT_30_YEARS",activity:"Spares and Material",subsystem:"ToBeDefined",desc:"Actual asset condition may be worse than baseline assumptions, increasing maintenance effort or replacement needs."},
+  {label:"Preventive maintenance frequency increase",owner:"ToBeDefined",wp:"WP0",cat:"Technical",impact:"Critical",like:"Occasionally",planningGuide:"L1_REC_MNT_30_YEARS",activity:"Labour",subsystem:"ToBeDefined",desc:"Preventive maintenance frequency may need to increase due to operating conditions, safety requirements or reliability feedback."},
+  {label:"Special tools or test bench requirement",owner:"ToBeDefined",wp:"WP0",cat:"Technical",impact:"Marginal",like:"Occasionally",planningGuide:"L1_REC_MNT_30_YEARS",activity:"Tools & Equipment",subsystem:"ToBeDefined",desc:"Specific tools, test benches or calibration equipment may be required beyond the current baseline."},
+  {label:"Track possession / access constraint",owner:"ToBeDefined",wp:"WP0",cat:"Project Management",impact:"Critical",like:"Occasionally",planningGuide:"L1_REC_MNT_30_YEARS",activity:"Labour",subsystem:"ToBeDefined",desc:"Track possession or worksite access constraints may reduce productivity and increase maintenance cost."},
+  {label:"Night work or restricted working window",owner:"ToBeDefined",wp:"WP0",cat:"Project Management",impact:"Critical",like:"Often",planningGuide:"L1_REC_MNT_30_YEARS",activity:"Labour",subsystem:"ToBeDefined",desc:"Restricted working windows or night work may increase labour cost, logistics complexity or subcontractor rates."},
+  {label:"Scope ambiguity / responsibility gap",owner:"ToBeDefined",wp:"WP0",cat:"Contractual obligations",impact:"Critical",like:"Occasionally",planningGuide:"L1_REC_MNT_30_YEARS",activity:"Risks",subsystem:"ToBeDefined",desc:"Maintenance scope, responsibility split or interface boundaries may be ambiguous and create additional exposure."},
+  {label:"Supplier quotation uncertainty",owner:"ToBeDefined",wp:"WP0",cat:"Financial / Tax / Customs",impact:"Critical",like:"Occasionally",planningGuide:"L1_REC_MNT_30_YEARS",activity:"Spares and Material",subsystem:"ToBeDefined",desc:"Supplier quotations may be incomplete, not binding or based on assumptions that can change during execution."},
+  {label:"Long lead item availability",owner:"ToBeDefined",wp:"WP0",cat:"Industrial / Site Installation",impact:"Critical",like:"Occasionally",planningGuide:"L1_Contingencies_RENEW",activity:"Spares and Material",subsystem:"ToBeDefined",desc:"Long lead items may affect maintenance planning, renewal timing, stock strategy or expedited procurement cost."},
+  {label:"Inflation / escalation on materials",owner:"ToBeDefined",wp:"WP0",cat:"Financial / Tax / Customs",impact:"Critical",like:"Occasionally",planningGuide:"L1_REC_MNT_30_YEARS",activity:"Spares and Material",subsystem:"ToBeDefined",desc:"Material prices may escalate above assumptions due to inflation, market volatility or supplier repricing."},
+  {label:"CMMS / digital integration uncertainty",owner:"ToBeDefined",wp:"WP0",cat:"Contractual obligations",impact:"Critical",like:"Often",planningGuide:"L1_REC_MNT_30_YEARS",activity:"Tools & Equipment",subsystem:"ToBeDefined",desc:"CMMS, digital tooling or predictive maintenance integration scope may require additional configuration, interfaces or support."},
+  {label:"Data availability / asset register quality",owner:"ToBeDefined",wp:"WP0",cat:"Project Management",impact:"Marginal",like:"Often",planningGuide:"L1_REC_MNT_30_YEARS",activity:"Labour",subsystem:"ToBeDefined",desc:"Asset register completeness, maintenance history or reliability data quality may be insufficient for robust cost assumptions."}
+];
+
+/* =================== STATE =================== */
+let DATA={meta:{project:"",code:"Metro",projectCode:"CDG",riskCode:"RISK",date:"",contractStartDate:"2026-01-01",contractStartYear:2026,contractDuration:30,totalCostLocal:0,phaseCosts:{},baseCurrency:"EUR"},risks:[],planningGuides:{source:"",importedAt:"",profiles:[],periods:[]}};
+let PROJECTS={activeId:"",items:{}};
+let editingId=null, matrixFilter=null;
+const uid=()=>Math.random().toString(36).slice(2,9);
+function contractDuration(){return Math.max(1,+DATA.meta.contractDuration||30);}
+function contractStartYear(){return +(DATA.meta.contractStartDate||"").slice(0,4)||+DATA.meta.contractStartYear||new Date().getFullYear();}
+function ensurePlanningGuides(){
+  DATA.planningGuides=DATA.planningGuides||{source:"",importedAt:"",profiles:[],periods:[]};
+  DATA.planningGuides.profiles=DATA.planningGuides.profiles||[];
+  DATA.planningGuides.periods=DATA.planningGuides.periods||[];
+  return DATA.planningGuides;
+}
+function unique(arr){return [...new Set(arr.filter(Boolean))];}
+function normalizeCurrency(cur){return String(cur||"EUR").trim().toUpperCase().replace(/[^A-Z0-9_]/g,"").slice(0,12)||"EUR";}
+function targetCurrency(){return normalizeCurrency(DATA.meta?.baseCurrency||"EUR");}
+function fxFallbackRate(source,target=targetCurrency()){
+  source=normalizeCurrency(source);target=normalizeCurrency(target);
+  const sourcePerEur=DEFAULT_FX_EUR_BASE[source]||1;
+  const targetPerEur=DEFAULT_FX_EUR_BASE[target]||1;
+  return +(targetPerEur/sourcePerEur).toFixed(6);
+}
+function projectCurrencies(){
+  const currencies=[...Object.keys(DEFAULT_FX_EUR_BASE),targetCurrency()];
+  (DATA.risks||[]).forEach(r=>{
+    currencies.push(r.currency);
+    (r.actions||[]).forEach(a=>currencies.push(a.currency||r.currency));
+  });
+  Object.keys(DATA.fx?.rates||{}).forEach(c=>currencies.push(c));
+  return unique(currencies.map(normalizeCurrency));
+}
+function ensureFx(){
+  DATA.fx=DATA.fx||{target:targetCurrency(),sourceLabel:LIVE_FX_LABEL,updatedAt:"",rates:{}};
+  DATA.fx.rates=DATA.fx.rates||{};
+  const target=targetCurrency();
+  const targetChanged=DATA.fx.target&&DATA.fx.target!==target;
+  DATA.fx.target=target;
+  projectCurrencies().forEach(cur=>{
+    const existing=DATA.fx.rates[cur]||{};
+    DATA.fx.rates[cur]={
+      liveRate:cur===target?1:(targetChanged?fxFallbackRate(cur,target):(parseFloat(existing.liveRate)||fxFallbackRate(cur,target))),
+      manualOverride:targetChanged?"":(existing.manualOverride??""),
+      source:cur===target?"Identity":(existing.source||"Fallback"),
+      updatedAt:cur===target?"":(existing.updatedAt||DATA.fx.updatedAt||"")
+    };
+  });
+  DATA.fx.rates[target]={liveRate:1,manualOverride:"",source:"Identity",updatedAt:""};
+  return DATA.fx;
+}
+function fxCurrencies(){return projectCurrencies();}
+function fxRateRow(cur){
+  const fxTable=ensureFx();
+  cur=normalizeCurrency(cur);
+  if(!fxTable.rates[cur])fxTable.rates[cur]={liveRate:fxFallbackRate(cur),manualOverride:"",source:"Fallback",updatedAt:""};
+  return fxTable.rates[cur];
+}
+function effectiveFxRate(cur){
+  cur=normalizeCurrency(cur);
+  if(cur===targetCurrency())return 1;
+  const row=fxRateRow(cur);
+  const manual=parseFloat(row.manualOverride);
+  if(Number.isFinite(manual)&&manual>0)return manual;
+  const live=parseFloat(row.liveRate);
+  return Number.isFinite(live)&&live>0?live:fxFallbackRate(cur);
+}
+function normalizeSubsystem(value){
+  const map={
+    "Infra Prod Mgt":"Infra_Management",
+    "Infra Management":"Infra_Management",
+    "Infra_Management":"Infra_Management",
+    "Power Supply":"Feeding_System",
+    "Feeding System":"Feeding_System",
+    "Feeding_System":"Feeding_System",
+    Track:"Track",POS:"POS",PSD:"PSD",DEQ:"DEQ",VMI:"VMI",AFC:"AFC",MEP:"MEP"
+  };
+  return map[value]||"";
+}
+function normalizeRiskSubsystems(){
+  (DATA.risks||[]).forEach(r=>{
+    const s=normalizeSubsystem(r.owner||r.subsystem);
+    r.owner=s;
+    r.subsystem=s;
+  });
+}
+function guideNames(kind="all"){
+  const g=ensurePlanningGuides();
+  const imported = kind==="profiles" ? g.profiles.map(x=>x.name)
+    : kind==="periods" ? g.periods.map(x=>x.name)
+    : [...g.profiles.map(x=>x.name),...g.periods.map(x=>x.name)];
+  return unique([...PLANNING_GUIDES,...imported]);
+}
+function guideNamesForMode(mode){
+  const g=ensurePlanningGuides();
+  if(mode==="overhaulGuide"){
+    const ovh=g.profiles.filter(x=>/OVH|OVERHAUL/i.test(x.name)).map(x=>x.name);
+    return unique(ovh.length?ovh:(g.profiles.length?g.profiles.map(x=>x.name):PLANNING_GUIDES));
+  }
+  if(mode==="renewalGuide"){
+    const renew=g.profiles.filter(x=>/REN|RENEW/i.test(x.name)).map(x=>x.name);
+    return unique(renew.length?renew:(g.profiles.length?g.profiles.map(x=>x.name):PLANNING_GUIDES));
+  }
+  if(mode==="mobilisation"){
+    const mob=g.periods.filter(x=>/MOB/i.test(x.name)).map(x=>x.name);
+    return unique(mob.length?mob:(g.periods.length?g.periods.map(x=>x.name):PLANNING_GUIDES));
+  }
+  if(mode==="demobilisation"){
+    const demob=g.periods.filter(x=>/DEMOB|DE-MOB|DEMOBIL/i.test(x.name)).map(x=>x.name);
+    return unique(demob.length?demob:(g.periods.length?g.periods.map(x=>x.name):PLANNING_GUIDES));
+  }
+  if(mode==="recurring"){
+    const rec=g.periods.filter(x=>/REC|RECUR/i.test(x.name)).map(x=>x.name);
+    return unique(rec.length?rec:(g.periods.length?g.periods.map(x=>x.name):PLANNING_GUIDES));
+  }
+  return guideNames();
+}
+function findGuide(name){
+  const g=ensurePlanningGuides();
+  return g.profiles.find(x=>x.name===name)||g.periods.find(x=>x.name===name)||null;
+}
+function guidePreview(name){
+  const g=findGuide(name);
+  if(!g)return "";
+  if(g.kind==="profile"){
+    const points=g.distribution.filter(x=>x.value).map(x=>`${x.year}: ${f1(x.value)}%`).join(" | ");
+    return points?`Profile ${g.phase||""} ${g.subsystem||""} ${g.currency||""} - ${points}`:`Profile ${g.phase||""} ${g.subsystem||""} without annual values`;
+  }
+  return `Period ${g.phase||""} ${g.startDate||"?"} to ${g.endDate||"?"} (${g.months||0} months / ${g.years||0} years)`;
+}
+function phaseOptions(){
+  const g=ensurePlanningGuides();
+  return unique(["RISK",...g.profiles.map(x=>String(x.phase||"").trim()),...(DATA.risks||[]).map(r=>String(r.phasing?.phase||"").trim())]);
+}
+function normalizePhase(value){
+  return String(value||"RISK").trim()||"RISK";
+}
+function riskPhase(r){
+  const p=normalizePhasing(r);
+  p.phase=normalizePhase(p.phase);
+  return p.phase;
+}
+function phaseList(){
+  ensureFx();
+  if(!DATA.meta.phaseCosts&&DATA.meta.totalCostLocal)DATA.meta.phaseCosts={RISK:+DATA.meta.totalCostLocal||0};
+  DATA.meta.phaseCosts=DATA.meta.phaseCosts||{};
+  const phases=["RISK"];
+  (DATA.risks||[]).forEach(r=>phases.push(riskPhase(r)));
+  ensurePlanningGuides().profiles.forEach(g=>phases.push(g.phase));
+  ensurePlanningGuides().periods.forEach(g=>phases.push(g.phase));
+  Object.keys(DATA.meta.phaseCosts).forEach(p=>phases.push(p));
+  return unique(phases.map(normalizePhase)).sort((a,b)=>a.localeCompare(b));
+}
+function defaultPhasing(){
+  return {phase:"RISK",mode:"specificYear",startYear:1,endYear:contractDuration(),specificYear:1,period:"",guide:""};
+}
+function normalizePhasing(r){
+  if(r.phasing){
+    r.phasing.phase=normalizePhase(r.phasing.phase);
+    return r.phasing;
+  }
+  const y=parseInt(r.occDate,10);
+  return {phase:"RISK",mode:Number.isFinite(y)&&y>0?"specificYear":"recurring",startYear:1,endYear:contractDuration(),specificYear:Number.isFinite(y)&&y>0?y:null,period:"",guide:r.planningGuide||""};
+}
+function periodRange(period){
+  const d=contractDuration();
+  const q1=Math.max(1,Math.ceil(d/4));
+  const q2=Math.max(q1,Math.ceil(d/2));
+  const q3=Math.max(q2,Math.ceil(d*3/4));
+  if(period==="firstQuarter")return [1,q1];
+  if(period==="secondQuarter")return [Math.min(d,q1+1),q2];
+  if(period==="thirdQuarter")return [Math.min(d,q2+1),q3];
+  if(period==="lastQuarter")return [Math.min(d,q3+1),d];
+  if(period==="firstHalf")return [1,Math.max(1,Math.ceil(d/2))];
+  if(period==="secondHalf")return [Math.max(1,Math.floor(d/2)+1),d];
+  return [1,d];
+}
+function yearCode(year){return "Y"+String(Math.max(1,parseInt(year,10)||1)).padStart(2,"0");}
+function yearLabel(year){return "Year "+String(Math.max(1,parseInt(year,10)||1)).padStart(2,"0");}
+function codePart(value,fallback){
+  return String(value||fallback||"").trim().replace(/\s+/g,"_").replace(/[^A-Za-z0-9_]/g,"").toUpperCase();
+}
+function contractStartDate(){
+  const raw=DATA.meta.contractStartDate||`${contractStartYear()}-01-01`;
+  const parts=String(raw).split("-").map(x=>parseInt(x,10));
+  return new Date(parts[0]||contractStartYear(),(parts[1]||1)-1,parts[2]||1);
+}
+function addYears(date,years){
+  const d=new Date(date.getTime());
+  d.setFullYear(d.getFullYear()+years);
+  return d;
+}
+function addDays(date,days){
+  const d=new Date(date.getTime());
+  d.setDate(d.getDate()+days);
+  return d;
+}
+function dateISO(date){
+  return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,"0")}-${String(date.getDate()).padStart(2,"0")}`;
+}
+function contractYearDateRange(year){
+  const y=Math.max(1,Math.min(contractDuration(),parseInt(year,10)||1));
+  const base=contractStartDate();
+  return {startDate:dateISO(addYears(base,y-1)),endDate:dateISO(addDays(addYears(base,y),-1))};
+}
+function splitPercent(count){
+  const n=Math.max(1,count);
+  const base=+(100/n).toFixed(2);
+  const values=Array(n).fill(base);
+  values[n-1]=+(100-base*(n-1)).toFixed(2);
+  return values;
+}
+function clampContractYear(year,fallback=1){
+  return Math.max(1,Math.min(contractDuration(),parseInt(year,10)||fallback));
+}
+function yearsBetween(start,end){
+  const years=[];
+  for(let y=start;y<=end;y++)years.push(y);
+  return years;
+}
+function normalizeCustomPeriod(p,reset=false){
+  p.customStartYear=clampContractYear(p.customStartYear||1,1);
+  p.customEndYear=clampContractYear(p.customEndYear||p.customStartYear,p.customStartYear);
+  if(p.customEndYear<p.customStartYear)p.customEndYear=p.customStartYear;
+  const years=yearsBetween(p.customStartYear,p.customEndYear);
+  if(!p.customDistribution||typeof p.customDistribution!=="object"||reset){
+    const values=splitPercent(years.length);
+    p.customDistribution={};
+    years.forEach((year,i)=>{p.customDistribution[year]=values[i];});
+  }else{
+    years.forEach(year=>{
+      p.customDistribution[year]=+(parseFloat(p.customDistribution[year])||0).toFixed(2);
+    });
+  }
+  return years;
+}
+function contractPeriodYears(p){
+  if(p&&p.period==="custom")return normalizeCustomPeriod(p);
+  const range=periodRange(p&&p.period?p.period:"firstQuarter");
+  return yearsBetween(range[0],range[1]);
+}
+function contractPeriodDistribution(p){
+  const years=contractPeriodYears(p);
+  if(p&&p.period==="custom"){
+    const distribution={};
+    years.forEach(year=>{distribution[year]=+(parseFloat(p.customDistribution?.[year])||0).toFixed(2);});
+    return distribution;
+  }
+  const values=splitPercent(years.length);
+  const distribution={};
+  years.forEach((year,i)=>{distribution[year]=values[i];});
+  return distribution;
+}
+function customPeriodTotal(p){
+  const distribution=contractPeriodDistribution(p);
+  return Object.values(distribution).reduce((sum,value)=>sum+(parseFloat(value)||0),0);
+}
+function distributionSignature(distribution){
+  return Object.keys(distribution).sort((a,b)=>+a-+b).map(year=>`${year}:${(+distribution[year]).toFixed(2)}`).join("|");
+}
+function generatedRiskPlanningGuide(r){
+  const p=normalizePhasing(r);
+  const subsystem=normalizeSubsystem(r.owner||r.subsystem)||"SUBSYSTEM";
+  const prefix=[codePart(DATA.meta.projectCode,"CDG"),codePart(DATA.meta.riskCode,"RISK"),subsystem].join("_");
+  if(p.mode==="specificYear")return `${prefix}_${yearCode(p.specificYear||1)}`;
+  if(p.mode==="contractPeriod"){
+    const years=contractPeriodYears(p);
+    return `${prefix}_${yearCode(years[0])}_${yearCode(years[years.length-1])}`;
+  }
+  return "";
+}
+function phasingSummary(p){
+  p=p||defaultPhasing();
+  const d=contractDuration();
+  if(p.mode==="mobilisation")return `Mobilisation, one-shot${p.guide?` - ${p.guide}`:""}`;
+  if(p.mode==="demobilisation")return `Demobilisation, one-shot Y${d}${p.guide?` - ${p.guide}`:""}`;
+  if(p.mode==="recurring")return `Recurrent annual Y${p.startYear||1} to Y${p.endYear||d}${p.guide?` - ${p.guide}`:""}`;
+  if(p.mode==="specificYear")return `Contract year Y${p.specificYear||1}`;
+  if(p.mode==="contractPeriod"){const years=contractPeriodYears(p);const lab=(CONTRACT_PERIODS.find(x=>x.value===p.period)||{}).label||"Contract period";const total=p.period==="custom"?`, total ${f1(customPeriodTotal(p))}%`:"";return `${lab}, Y${years[0]} to Y${years[years.length-1]}${total}`;}
+  if(p.mode==="overhaulGuide")return `Overhaul guide: ${p.guide||"to be selected"}`;
+  if(p.mode==="renewalGuide")return `Renewal guide: ${p.guide||"to be selected"}`;
+  return "Application to be defined";
+}
+function phasingModeHasGuide(mode){
+  return ["mobilisation","recurring","demobilisation","overhaulGuide","renewalGuide","specificYear","contractPeriod"].includes(mode);
+}
+function syncPlanningGuideFromPhasing(r){
+  const p=r.phasing=normalizePhasing(r);
+  if(p.mode==="specificYear"||p.mode==="contractPeriod"){
+    r.planningGuide=generatedRiskPlanningGuide(r);
+    p.guide=r.planningGuide;
+    return;
+  }
+  if(!phasingModeHasGuide(p.mode)){
+    r.planningGuide="";
+    return;
+  }
+  if(!p.guide&&r.planningGuide)p.guide=r.planningGuide;
+  r.planningGuide=p.guide||"";
+}
+function occurrenceCount(r){
+  const p=normalizePhasing(r);
+  if(p.mode!=="recurring")return 1;
+  const d=contractDuration();
+  const start=Math.max(1,Math.min(d,parseInt(p.startYear,10)||1));
+  const end=Math.max(start,Math.min(d,parseInt(p.endYear,10)||d));
+  return end-start+1;
+}
+function ensureMercuryOverrides(r){
+  r.mercuryOverrides=r.mercuryOverrides||{};
+  if(r.mercuryManual===undefined)r.mercuryManual=false;
+  if(r.mercuryOverrides.planningGuideManual===undefined)r.mercuryOverrides.planningGuideManual=false;
+  r.unit=r.unit||MERCURY_DEFAULTS.caratUnit;
+  return r.mercuryOverrides;
+}
+function mercuryPlanningGuide(r){
+  const o=ensureMercuryOverrides(r);
+  return o.planningGuideManual?(o.planningGuide||""):(r.planningGuide||"");
+}
+function effectiveMercuryConfig(r){
+  const o=ensureMercuryOverrides(r);
+  const manual=!!r.mercuryManual;
+  const caratUnit=manual?(o.caratUnit||r.unit||MERCURY_DEFAULTS.caratUnit):MERCURY_DEFAULTS.caratUnit;
+  const derived=UNIT_ROLE[caratUnit]||MERCURY_DEFAULTS;
+  return {
+    abs:manual?(o.abs||MERCURY_DEFAULTS.abs):MERCURY_DEFAULTS.abs,
+    caratUnit,
+    tasks:manual?(o.tasks||MERCURY_DEFAULTS.tasks):MERCURY_DEFAULTS.tasks,
+    unitRole:manual?(o.unitRole||derived.role||MERCURY_DEFAULTS.unitRole):MERCURY_DEFAULTS.unitRole,
+    shore:manual?(o.shore||derived.shore||MERCURY_DEFAULTS.shore):MERCURY_DEFAULTS.shore
+  };
+}
+
+/* =================== BUSINESS RULES =================== */
+function impactScore(i){return IMPACTS[i]||0;}
+function likeScore(l){return LIKE[l]||0;}
+function profile(i,l){
+  const s=impactScore(i)*likeScore(l);
+  if(s===0)return{name:"-",key:"None",score:0};
+  const name=(PROFILE_MATRIX[i]||{})[l]||"Acceptable";
+  return{name,key:name,score:s};
+}
+function fx(cur){return effectiveFxRate(cur);}
+// Valuation rule derived from the original register.
+function valorizeUnit(r){
+  const grossEUR=(r.valueLocal||0)*fx(r.currency);
+  let effect=0,cost=0;
+  (r.actions||[]).forEach(a=>{
+    const af=fx(a.currency||r.currency);
+    const progress=Math.max(0,Math.min(100,+a.progress||0))/100;
+    const targetEffect=(a.effectLocal||0)*af;
+    const targetCost=(a.costLocal||0)*af;
+    if(a.status==="Closed - Implemented"){
+      effect+=targetEffect;
+      cost+=targetCost;
+    }else if(a.status==="Closed - Abandoned"){
+      cost+=targetCost*progress;
+    }else{
+      effect+=targetEffect*progress;
+      cost+=targetCost*progress;
+    }
+  });
+  const residual = r.status==="Open" ? (grossEUR-effect+cost) : 0;
+  const provision = residual*((r.provisionPct??25)/100);
+  return{grossEUR,effect,cost,residual,provision};
+}
+function valorize(r){
+  const unit=valorizeUnit(r);
+  const occurrences=occurrenceCount(r);
+  return{
+    grossEUR:unit.grossEUR*occurrences,
+    effect:unit.effect*occurrences,
+    cost:unit.cost*occurrences,
+    residual:unit.residual*occurrences,
+    provision:unit.provision*occurrences,
+    occurrences,
+    unit
+  };
+}
+// Derived Mercury block.
+function mercury(r,idx){
+  syncPlanningGuideFromPhasing(r);
+  const occurrences=occurrenceCount(r);
+  const mc=effectiveMercuryConfig(r);
+  const unitValuation=valorizeUnit(r);
+  const has = (r.valueLocal||0)!==0;
+  return{
+    "Phase":riskPhase(r),
+    "RISK ID":"Infra IR_RISK"+r.number,
+    "Planning Guide":mercuryPlanningGuide(r),
+    "PBS":"",
+    "ABS":mc.abs,
+    "CARAT Unit":mc.caratUnit,
+    "ASSOCIATED WP":r.wp||"WP0",
+    "TASKS":mc.tasks,
+    "Unit Role":mc.unitRole,
+    "On/Off Shore":mc.shore,
+    "Delegated person":has?"INFRA":"",
+    "Price List Code 1":"RISK",
+    "Price List Code 2":r.activity||"Risks",
+    "Price List Code 3":r.subsystem||"",
+    "Currency":r.currency||"",
+    "Nb Tot. of Occurency":has?occurrences:"",
+    "Quantity":has?1:"",
+    "Fixed Contingencies/ Risk: Most likely value":has?+(unitValuation.provision/fx(r.currency)*1000).toFixed(2):"",
+    "Risk type":has?"IR":""
+  };
+}
+
+/* =================== FORMAT =================== */
+const f0=n=>(n||0).toLocaleString('en-US',{maximumFractionDigits:0});
+const f1=n=>(n||0).toLocaleString('en-US',{minimumFractionDigits:1,maximumFractionDigits:1});
+const f6=n=>(n||0).toLocaleString('en-US',{minimumFractionDigits:6,maximumFractionDigits:6});
+
+/* =================== PERSISTENCE =================== */
+function defaultProjectName(data=DATA){return data.meta?.project||"Untitled project";}
+function cloneData(data){return JSON.parse(JSON.stringify(data));}
+function persist(){
+  try{
+    if(!PROJECTS.activeId)PROJECTS.activeId=uid();
+    PROJECTS.items[PROJECTS.activeId]={id:PROJECTS.activeId,name:defaultProjectName(DATA),updatedAt:new Date().toISOString(),data:cloneData(DATA)};
+    localStorage.setItem('railRiskProjects',JSON.stringify(PROJECTS));
+    localStorage.setItem('railRisk',JSON.stringify(DATA));
+    renderProjectSelect();
+  }catch(e){}
+}
+function restore(){
+  try{
+    const multi=localStorage.getItem('railRiskProjects');
+    if(multi){
+      PROJECTS=JSON.parse(multi);
+      PROJECTS.items=PROJECTS.items||{};
+      if(!PROJECTS.activeId||!PROJECTS.items[PROJECTS.activeId])PROJECTS.activeId=Object.keys(PROJECTS.items)[0]||"";
+      if(PROJECTS.activeId){DATA=cloneData(PROJECTS.items[PROJECTS.activeId].data);return true;}
+    }
+    const single=localStorage.getItem('railRisk');
+    if(single){
+      DATA=JSON.parse(single);
+      PROJECTS={activeId:uid(),items:{}};
+      PROJECTS.items[PROJECTS.activeId]={id:PROJECTS.activeId,name:defaultProjectName(DATA),updatedAt:new Date().toISOString(),data:cloneData(DATA)};
+      localStorage.setItem('railRiskProjects',JSON.stringify(PROJECTS));
+      return true;
+    }
+  }catch(e){}
+  return false;
+}
+function renderProjectSelect(){
+  const sel=document.getElementById('project-select');
+  if(!sel)return;
+  const current=sel.value||PROJECTS.activeId;
+  sel.innerHTML=Object.values(PROJECTS.items).sort((a,b)=>(a.name||"").localeCompare(b.name||"")).map(p=>`<option value="${p.id}" ${p.id===PROJECTS.activeId?'selected':''}>${esc(p.name||"Untitled project")}</option>`).join('');
+  if(PROJECTS.items[current])sel.value=current;
+  updateSidebarProjectName();
+}
+function updateSidebarProjectName(){
+  const el=document.getElementById('sidebar-project-name');
+  if(!el)return;
+  const name=defaultProjectName(DATA);
+  el.textContent=name;
+  el.title=name;
+}
+function switchProject(id){
+  if(!id||id===PROJECTS.activeId)return;
+  syncMeta(true);
+  if(!PROJECTS.items[id])return;
+  PROJECTS.activeId=id;
+  DATA=cloneData(PROJECTS.items[id].data);
+  matrixFilter=null;editingId=null;closeRisk();
+  ensurePlanningGuides();normalizeRiskSubsystems();ensureFx();initMeta();refreshAll();updateGuideImportStatus();renderProjectSelect();
+}
+function newProject(){
+  syncMeta(true);
+  const id=uid();
+  DATA={meta:{project:"New project",code:"Metro",projectCode:"CDG",riskCode:"RISK",date:new Date().toISOString().slice(0,10),contractStartDate:"2026-01-01",contractStartYear:2026,contractDuration:30,totalCostLocal:0,phaseCosts:{},baseCurrency:"EUR"},risks:[],planningGuides:{source:"",importedAt:"",profiles:[],periods:[]}};
+  ensureFx();
+  PROJECTS.activeId=id;
+  PROJECTS.items[id]={id,name:defaultProjectName(DATA),updatedAt:new Date().toISOString(),data:cloneData(DATA)};
+  persist();initMeta();refreshAll();updateGuideImportStatus();toast('Project created');
+}
+function duplicateProject(){
+  syncMeta(true);
+  const id=uid();
+  const copy=cloneData(DATA);
+  copy.meta.project=(copy.meta.project||"Project")+" copy";
+  DATA=copy;
+  PROJECTS.activeId=id;
+  PROJECTS.items[id]={id,name:defaultProjectName(DATA),updatedAt:new Date().toISOString(),data:cloneData(DATA)};
+  persist();initMeta();refreshAll();updateGuideImportStatus();toast('Project duplicated');
+}
+function deleteProject(){
+  const ids=Object.keys(PROJECTS.items);
+  if(ids.length<=1){toast('At least one project is required',true);return;}
+  if(!confirm(`Delete project "${defaultProjectName(DATA)}"?`))return;
+  delete PROJECTS.items[PROJECTS.activeId];
+  PROJECTS.activeId=Object.keys(PROJECTS.items)[0];
+  DATA=cloneData(PROJECTS.items[PROJECTS.activeId].data);
+  localStorage.setItem('railRiskProjects',JSON.stringify(PROJECTS));
+  ensureFx();initMeta();refreshAll();updateGuideImportStatus();renderProjectSelect();toast('Project deleted');
+}
+
+/* =================== SEED =================== */
+function seed(){
+  const mk=(n,unit,wp,desc,owner,cat,impact,like,prov,planningGuide,activity,subsystem)=>({
+    id:uid(),number:n,unit,wp,desc,owner,cat,status:"Open",occDate:"15",
+    impact,like,valueLocal:0,currency:"EUR",provisionPct:prov,
+    planningGuide,activity,subsystem,phasing:{mode:"specificYear",startYear:1,endYear:30,specificYear:15,period:"",guide:""},actions:[]
+  });
+  DATA={meta:{project:"Railway Passerelle - Infrastructure Maintenance",code:"Metro",projectCode:"CDG",riskCode:"RISK",totalCostLocal:0,phaseCosts:{},date:new Date().toISOString().slice(0,10),contractStartDate:"2026-01-01",contractStartYear:2026},risks:[
+    mk(1,"LOCAL","WP0","PSD Spares consumption : PSD Suppliers issue","PSD","Technical","Critical","Occasionally",25,"L1_REC_MNT_30_YEARS","Spares and Material","PSD"),
+    mk(2,"LOCAL","WP0","PSD Renewall activities","PSD","Technical","Critical","Occasionally",25,"L1_Contingencies_RENEW","Spares and Material","PSD"),
+    mk(3,"LOCAL","WP0","DEQ Spares consumption","DEQ","Technical","Critical","Occasionally",20,"L1_REC_MNT_POST_WAR_OPTION_4","Spares and Material","DEQ"),
+    mk(4,"LOCAL","WP0","DEQ Overhaul / Renewall activities","DEQ","Technical","Critical","Occasionally",25,"L1_Contingencies_OVH","Spares and Material","DEQ"),
+    mk(5,"LOCAL","WP0","Staff Roster : maintenance team availability","Infra_Management","Project Management","Highly Critical","Occasionally",20,"L1_REC_MNT_30_YEARS","Labour","Infra_Management"),
+    mk(6,"LOCAL","WP0","Multiskills technicians / Synergy with sub-systems","Infra_Management","Project Management","Highly Critical","Often",20,"L1_REC_MNT_30_YEARS","Labour","Infra_Management"),
+    mk(7,"LOCAL","WP0","On Call hours : high volume due to 3rd rail / catenary","Feeding_System","Project Management","Highly Critical","Rarely",25,"L1_REC_MNT_30_YEARS","Labour","Feeding_System"),
+    mk(8,"LOCAL","WP0","Digital solution for CBM / Predictive maintenance","PSD","Contractual obligations","Critical","Often",25,"L1_REC_MNT_30_YEARS","Tools & Equipment","PSD"),
+  ]};
+  // Valued example, intended to show the calculation mechanics.
+  DATA.risks.push({
+    id:uid(),number:9,unit:"LOCAL",wp:"WP0",
+    desc:"EXAMPLE - Premature catenary wear (to be deleted)",owner:"Feeding_System",
+    cat:"Technical",status:"Open",occDate:"24",impact:"Highly Critical",like:"Often",
+    valueLocal:500,currency:"EUR",provisionPct:25,
+    planningGuide:"L1_Contingencies_RENEW",activity:"Spares and Material",subsystem:"Feeding_System",
+    phasing:{mode:"renewalGuide",startYear:1,endYear:30,specificYear:null,period:"",guide:"L1_Contingencies_RENEW"},
+    actions:[
+      {id:uid(),number:1,desc:"Enhanced thermographic inspection + preventive replacement",owner:"Feeding_System",status:"Open",target:"2026-09-30",effectLocal:300,costLocal:50,currency:"EUR",progress:30}
+    ]
+  });
+  persist();
+}
+
+/* =================== RENDER : helpers =================== */
+function nextNumber(){return DATA.risks.reduce((m,r)=>Math.max(m,+r.number||0),0)+1;}
+function profileChipHTML(p){return `<span class="chip pf-${p.key}"><i class="dot" style="background:${profileColor(p.key)}"></i>${p.name}</span>`;}
+function profileColor(k){return{Acceptable:'var(--ok)',Moderate:'var(--mod)',Undesirable:'var(--und)',Intolerable:'var(--int)',None:'var(--none)'}[k];}
+
+/* =================== KPI + DASHBOARD =================== */
+function renderDash(){
+  ensureFx();
+  const target=targetCurrency();
+  let gross=0,resid=0,prov=0,open=0;
+  const byProfile={Acceptable:0,Moderate:0,Undesirable:0,Intolerable:0};
+  DATA.risks.forEach(r=>{
+    const v=valorize(r),p=profile(r.impact,r.like);
+    gross+=v.grossEUR;resid+=v.residual;prov+=v.provision;
+    if(r.status==="Open")open++;
+    if(byProfile[p.name]!==undefined)byProfile[p.name]++;
+  });
+  document.getElementById('kpis').innerHTML=`
+    ${kpi('Open risks',open,'/ '+DATA.risks.length+' total','')}
+    ${kpi('Gross exposure',f0(gross),'k'+target,'')}
+    ${kpi('Residual value',f0(resid),'k'+target,'k-res')}
+    ${kpi('Recommended provision',f1(prov),'k'+target,'k-prov')}
+    ${kpi('Critical risks',byProfile.Undesirable+byProfile.Intolerable,'Undesirable + Intolerable','k-int')}`;
+  renderPhaseCostTable();
+  renderMatrix();
+  renderBars();
+  renderFxTable();
+}
+function kpi(lab,val,unit,cls){return `<div class="kpi ${cls}"><div class="lab">${lab}</div><div class="val">${val} <span class="unit">${unit}</span></div></div>`;}
+
+function phaseExposureSummary(){
+  const summary={};
+  phaseList().forEach(phase=>summary[phase]={gross:0,residual:0,provision:0,count:0});
+  DATA.risks.forEach(r=>{
+    const phase=riskPhase(r);
+    const v=valorize(r);
+    summary[phase]=summary[phase]||{gross:0,residual:0,provision:0,count:0};
+    summary[phase].gross+=v.grossEUR;
+    summary[phase].residual+=v.residual;
+    summary[phase].provision+=v.provision;
+    summary[phase].count++;
+  });
+  return summary;
+}
+function renderPhaseCostTable(){
+  DATA.meta.phaseCosts=DATA.meta.phaseCosts||{};
+  const card=document.getElementById('phase-cost-card');
+  if(!card)return;
+  const target=targetCurrency();
+  const summary=phaseExposureSummary();
+  const phases=Object.keys(summary).filter(phase=>summary[phase].count>0).sort((a,b)=>a.localeCompare(b));
+  if(!phases.length){
+    card.innerHTML=`<h3>Project cost by phase</h3>
+      <p>No risk phase to display. Add or edit a risk to assign it to a phase.</p>`;
+    return;
+  }
+  card.innerHTML=`<h3>Project cost by phase</h3>
+    <p>Enter the contract cost per phase in k${target}. Ratios are calculated against the matching phase only.</p>
+    <table><tr><th>Phase</th><th class="num">Phase cost (k${target})</th><th class="num">Gross exposure</th><th class="num">Provision</th><th class="num">Gross / phase</th><th class="num">Provision / phase</th><th class="num">Risks</th></tr>
+    ${phases.map(phase=>{
+      const s=summary[phase];
+      const cost=+DATA.meta.phaseCosts[phase]||0;
+      const grossPct=cost?s.gross/cost*100:null;
+      const provPct=cost?s.provision/cost*100:null;
+      return `<tr>
+        <td class="mono">${phase}</td>
+        <td class="num"><input type="number" min="0" step="any" value="${cost||""}" onchange="setPhaseCost(this.dataset.phase,this.value)" oninput="setPhaseCost(this.dataset.phase,this.value,true)" data-phase="${esc(phase)}"></td>
+        <td class="num">${f1(s.gross)}</td>
+        <td class="num">${f1(s.provision)}</td>
+        <td class="num" data-phase-pct-gross="${esc(phase)}">${grossPct===null?"-":f1(grossPct)+"%"}</td>
+        <td class="num" data-phase-pct-provision="${esc(phase)}">${provPct===null?"-":f1(provPct)+"%"}</td>
+        <td class="num">${s.count}</td>
+      </tr>`;
+    }).join('')}</table>`;
+}
+function setPhaseCost(phase,value,skipPersist=false){
+  DATA.meta.phaseCosts=DATA.meta.phaseCosts||{};
+  DATA.meta.phaseCosts[phase]=parseFloat(value)||0;
+  if(skipPersist){updatePhaseCostDisplays(phase);return;}
+  renderPhaseCostTable();
+  persist();
+}
+function updatePhaseCostDisplays(phase){
+  const summary=phaseExposureSummary();
+  const s=summary[phase]||{gross:0,provision:0};
+  const cost=+DATA.meta.phaseCosts[phase]||0;
+  const grossPct=cost?s.gross/cost*100:null;
+  const provPct=cost?s.provision/cost*100:null;
+  document.querySelectorAll('[data-phase-pct-gross]').forEach(el=>{if(el.dataset.phasePctGross===phase)el.textContent=grossPct===null?"-":f1(grossPct)+"%";});
+  document.querySelectorAll('[data-phase-pct-provision]').forEach(el=>{if(el.dataset.phasePctProvision===phase)el.textContent=provPct===null?"-":f1(provPct)+"%";});
+}
+
+function renderFxTable(){
+  ensureFx();
+  const table=document.getElementById('fx-table');
+  if(!table)return;
+  const target=targetCurrency();
+  const title=document.getElementById('fx-project-title');
+  const subtitle=document.getElementById('fx-project-subtitle');
+  const source=document.getElementById('fx-live-source');
+  if(title)title.textContent=DATA.meta.project||"Project";
+  if(subtitle)subtitle.textContent=`${DATA.meta.code||"Type"} | Target currency ${target}`;
+  if(source){
+    const stamp=DATA.fx.updatedAt?new Date(DATA.fx.updatedAt).toLocaleString('en-GB',{dateStyle:"short",timeStyle:"short"}):"not refreshed";
+    source.textContent=`${LIVE_FX_LABEL} | updated ${stamp}`;
+  }
+  const rows=fxCurrencies().sort((a,b)=>a.localeCompare(b));
+  table.innerHTML=`<colgroup><col style="width:18%"><col style="width:18%"><col style="width:25%"><col style="width:22%"><col style="width:17%"></colgroup>
+    <thead><tr><th>Currency</th><th class="num">Live rate</th><th>Manual override</th><th class="num">Effective rate</th><th>Source</th></tr></thead><tbody>`+
+    rows.map(cur=>{
+      const row=fxRateRow(cur);
+      const effective=effectiveFxRate(cur);
+      const isIdentity=cur===target;
+      const manual=row.manualOverride??"";
+      const sourceLabel=isIdentity?"Identity":(manual?"Manual":(row.source||"Live"));
+      return `<tr>
+        <td class="mono">${cur}</td>
+        <td class="num">${f6(row.liveRate||fxFallbackRate(cur,target))}</td>
+        <td>${isIdentity?"":`<input data-fx-manual="${cur}" type="number" min="0" step="0.000001" value="${esc(manual)}" onchange="setFxManualOverride('${cur}',this.value)">`}</td>
+        <td class="num"><b>${f6(effective)}</b></td>
+        <td>${sourceLabel}</td>
+      </tr>`;
+    }).join('')+`</tbody>`;
+}
+function setFxManualOverride(cur,value){
+  const row=fxRateRow(cur);
+  const v=parseFloat(value);
+  row.manualOverride=Number.isFinite(v)&&v>0?v:"";
+  persist();refreshAll();
+  if(window._draft)onFormChange();
+}
+async function refreshLiveFxRates(silent=false){
+  syncMeta(true);
+  const target=targetCurrency();
+  try{
+    const response=await fetch(`${LIVE_FX_API}/${encodeURIComponent(target)}`);
+    if(!response.ok)throw new Error(`HTTP ${response.status}`);
+    const data=await response.json();
+    if(!data||!data.rates)throw new Error("Invalid FX response");
+    const updatedAt=data.time_last_update_unix?new Date(data.time_last_update_unix*1000).toISOString():new Date().toISOString();
+    const fxTable=ensureFx();
+    fxCurrencies().forEach(cur=>{
+      const row=fxRateRow(cur);
+      const apiRate=parseFloat(data.rates[cur]);
+      row.liveRate=cur===target?1:(Number.isFinite(apiRate)&&apiRate>0?+(1/apiRate).toFixed(6):(row.liveRate||fxFallbackRate(cur,target)));
+      row.source=cur===target?"Identity":(Number.isFinite(apiRate)&&apiRate>0?"Live":(row.source||"Fallback"));
+      row.updatedAt=updatedAt;
+    });
+    fxTable.updatedAt=updatedAt;
+    persist();refreshAll();
+    if(window._draft)onFormChange();
+    if(!silent)toast('Live FX rates updated');
+  }catch(err){
+    if(!silent)console.error(err);
+    if(!silent)toast('Live FX unavailable - using saved rates',true);
+    renderFxTable();
+  }
+}
+function autoRefreshFxRates(){
+  const updated=DATA.fx?.updatedAt?new Date(DATA.fx.updatedAt).getTime():0;
+  const stale=!updated||(Date.now()-updated)>12*60*60*1000;
+  if(stale)refreshLiveFxRates(true);
+}
+
+function renderMatrix(){
+  const impactOrder=["Highly Critical","Critical","Marginal","Insignificant"];
+  const likeOrder=["Rarely","Occasionally","Often","Frequently"];
+  // counts per cell
+  const counts={};
+  DATA.risks.forEach(r=>{const k=r.impact+'|'+r.like;counts[k]=(counts[k]||0)+1;});
+  let html=`<div class="m-corner m-head"></div>`;
+  likeOrder.forEach(l=>html+=`<div class="m-head">${l}</div>`);
+  impactOrder.forEach(im=>{
+    html+=`<div class="m-side">${im}</div>`;
+    likeOrder.forEach(l=>{
+      const p=profile(im,l),c=counts[im+'|'+l]||0;
+      const active=matrixFilter&&matrixFilter.i===im&&matrixFilter.l===l;
+      html+=`<div class="cell ${c?'':'empty'}" style="background:${profileColor(p.key)};${active?'box-shadow:0 0 0 2px var(--rail)':''}"
+        onclick="toggleMatrixFilter('${im}','${l}')" title="${p.name} / score ${p.score}">
+        <span class="c-n">${c||'-'}</span><span class="c-s">${p.score}</span></div>`;
+    });
+  });
+  document.getElementById('matrix').innerHTML=html;
+}
+function toggleMatrixFilter(i,l){
+  if(matrixFilter&&matrixFilter.i===i&&matrixFilter.l===l)matrixFilter=null;
+  else matrixFilter={i,l};
+  renderMatrix();switchView('register');renderTable();
+}
+
+function renderBars(){
+  // by subsystem -> residual
+  const sub={};DATA.risks.forEach(r=>{const v=valorize(r);const k=r.subsystem||'(not defined)';sub[k]=(sub[k]||0)+v.residual;});
+  const subArr=Object.entries(sub).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);
+  const maxSub=Math.max(1,...subArr.map(x=>x[1]));
+  document.getElementById('bars-sub').innerHTML = subArr.length?subArr.map(([k,v])=>bar(k,v,maxSub,f0(v))).join('')
+    :`<p style="color:var(--muted-2);font-size:12px;margin:0">No residual value has been entered yet. Enter a gross risk cost on an open risk.</p>`;
+  // by category -> count
+  const cat={};DATA.risks.forEach(r=>{const k=shortCat(r.cat);cat[k]=(cat[k]||0)+1;});
+  const catArr=Object.entries(cat).sort((a,b)=>b[1]-a[1]);
+  const maxCat=Math.max(1,...catArr.map(x=>x[1]));
+  document.getElementById('bars-cat').innerHTML=catArr.map(([k,v])=>bar(k,v,maxCat,v)).join('');
+}
+function bar(name,val,max,disp){return `<div class="bar-row"><span class="bn" title="${name}">${name}</span>
+  <div class="bar-track"><div class="bar-fill" style="width:${Math.max(2,val/max*100)}%"></div></div>
+  <span class="bv">${disp}</span></div>`;}
+function shortCat(c){return (c||'').split(' / ')[0].split(' (')[0];}
+
+/* =================== TABLE REGISTRE =================== */
+function renderTable(){
+  document.getElementById('tab-cnt').textContent=DATA.risks.length;
+  // populate filters once
+  const fp=document.getElementById('filt-profile');
+  if(fp.options.length<=1)["Acceptable","Moderate","Undesirable","Intolerable","-"].forEach(p=>fp.add(new Option(p,p)));
+  const fs=document.getElementById('filt-status');
+  if(fs.options.length<=1)STATUSES.forEach(s=>fs.add(new Option(s,s)));
+  const fc=document.getElementById('filt-cat');
+  if(fc.options.length<=1)CATEGORIES.forEach(c=>fc.add(new Option(shortCat(c),c)));
+
+  const q=(document.getElementById('search').value||'').toLowerCase();
+  const pf=fp.value,st=fs.value,ct=fc.value;
+  let rows=DATA.risks.filter(r=>{
+    const p=profile(r.impact,r.like);
+    if(matrixFilter&&!(r.impact===matrixFilter.i&&r.like===matrixFilter.l))return false;
+    if(pf&&p.name!==pf)return false;
+    if(st&&r.status!==st)return false;
+    if(ct&&r.cat!==ct)return false;
+    const mc=effectiveMercuryConfig(r);
+    if(q&&!(`${r.desc} ${r.owner} ${mc.caratUnit} ${r.wp}`.toLowerCase().includes(q)))return false;
+    return true;
+  }).sort((a,b)=>(+a.number||0)-(+b.number||0));
+  const wrap=document.getElementById('table-wrap');
+  if(!rows.length){
+    wrap.innerHTML=`<div class="empty-state">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4-4"/></svg>
+      <h3>No risk ${matrixFilter||q||pf||st||ct?'matches the filter':'has been registered'}</h3>
+      <p>${matrixFilter?'<a href="#" onclick="matrixFilter=null;renderTable();return false" style="color:var(--rail)">Reset matrix filter</a>':'Click "New risk" to start.'}</p>
+    </div>`;return;
+  }
+  wrap.innerHTML=`<table><thead><tr>
+    <th>No.</th><th>Description</th><th>Category</th><th>Status</th><th>Profile</th>
+    <th class="num">Gross</th><th class="num">Residual</th><th class="num">Provision</th><th>Actions</th><th></th>
+  </tr></thead><tbody>${rows.map(r=>{
+    const v=valorize(r),p=profile(r.impact,r.like),mc=effectiveMercuryConfig(r);
+    const stc=r.status==="Open"?"st-Open":"st-closed";
+    return `<tr onclick="openRisk('${r.id}')">
+      <td class="rid">#${r.number}</td>
+      <td class="desc-cell"><div class="d1">${esc(r.desc)||'<i style="color:var(--muted-2)">No description</i>'}</div><div class="d2">${mc.caratUnit} / ${r.wp} / ${esc(r.owner)}</div></td>
+      <td><span style="color:var(--muted)">${shortCat(r.cat)}</span></td>
+      <td><span class="st ${stc}">${r.status}</span></td>
+      <td>${profileChipHTML(p)}</td>
+      <td class="num">${v.grossEUR?f0(v.grossEUR):'-'}</td>
+      <td class="num">${v.residual?f0(v.residual):'-'}</td>
+      <td class="num" style="color:var(--mod)">${v.provision?f1(v.provision):'-'}</td>
+      <td><span class="act-count"><b>${(r.actions||[]).length}</b> action(s)</span></td>
+      <td class="num"><div class="row-actions">
+        <button class="btn icon-btn" title="Duplicate risk" onclick="duplicateRiskFromTable('${r.id}',event)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M4 16V6a2 2 0 0 1 2-2h10"/></svg></button>
+        <button class="btn icon-btn danger" title="Delete risk" onclick="deleteRiskFromTable('${r.id}',event)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+      </div></td>
+    </tr>`;}).join('')}</tbody></table>`;
+}
+function esc(s){return String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+
+/* =================== DRAWER (form) =================== */
+function openRisk(id){
+  editingId=id;
+  const r=id?DATA.risks.find(x=>x.id===id):{
+    id:null,number:nextNumber(),unit:"LOCAL",wp:"WP0",desc:"",owner:"",cat:"Technical",
+    status:"Open",occDate:"",impact:"",like:"",valueLocal:0,currency:"EUR",provisionPct:25,
+    planningGuide:"",activity:"Risks",subsystem:"",comments:"",phasing:defaultPhasing(),actions:[]
+  };
+  if(r&&!r.phasing)r.phasing=normalizePhasing(r);
+  window._draft=JSON.parse(JSON.stringify(r));
+  document.getElementById('dr-rid').textContent='#'+r.number;
+  document.getElementById('dr-title').textContent=id?'Edit risk':'New risk';
+  document.getElementById('dr-delete').style.display=id?'inline-flex':'none';
+  renderForm();
+  document.getElementById('overlay').classList.add('open');
+  document.getElementById('drawer').classList.add('open');
+}
+function closeRisk(){document.getElementById('overlay').classList.remove('open');document.getElementById('drawer').classList.remove('open');editingId=null;}
+
+function duplicateRiskFromTable(id,event){
+  if(event)event.stopPropagation();
+  const source=DATA.risks.find(x=>x.id===id);
+  if(!source)return;
+  const copy=JSON.parse(JSON.stringify(source));
+  editingId=null;
+  copy.id=null;
+  copy.number=nextNumber();
+  copy.actions=(copy.actions||[]).map((a,i)=>({...a,id:uid(),number:i+1}));
+  copy.phasing=normalizePhasing(copy);
+  ensureMercuryOverrides(copy);
+  syncPlanningGuideFromPhasing(copy);
+  window._draft=copy;
+  document.getElementById('dr-rid').textContent='#'+copy.number;
+  document.getElementById('dr-title').textContent='Duplicate risk';
+  document.getElementById('dr-delete').style.display='none';
+  renderForm();
+  document.getElementById('overlay').classList.add('open');
+  document.getElementById('drawer').classList.add('open');
+  toast('Risk duplicated as draft');
+}
+
+function sel(name,opts,val,extra=""){
+  return `<select data-f="${name}" ${extra}>${val===''||val===undefined?'<option value="">-- select --</option>':''}${opts.map(o=>`<option ${o===val?'selected':''}>${o}</option>`).join('')}</select>`;
+}
+function selP(name,opts,val,extra=""){
+  return `<select data-p="${name}" ${extra}>${opts.map(o=>`<option value="${o.value}" ${o.value===val?'selected':''}>${o.label}</option>`).join('')}</select>`;
+}
+function selGuideP(name,opts,val,extra=""){
+  return `<select data-p="${name}" ${extra}><option value="">-- select --</option>${opts.map(o=>`<option value="${esc(o)}" ${o===val?'selected':''}>${esc(o)}</option>`).join('')}</select>`;
+}
+function phaseSelectP(p){
+  const opts=phaseOptions();
+  const phase=normalizePhase(p.phase);
+  const isCustom=!!p.phaseManual||!opts.includes(phase);
+  return `<select data-phase-select>
+      ${opts.map(o=>`<option value="${esc(o)}" ${!isCustom&&o===phase?'selected':''}>${esc(o)}</option>`).join('')}
+      <option value="__custom__" ${isCustom?'selected':''}>Custom</option>
+    </select>
+    ${isCustom?`<input data-phase-custom value="${esc(phase)}" placeholder="Manual phase">`:""}`;
+}
+function renderCustomPeriodSplit(p){
+  const years=normalizeCustomPeriod(p);
+  const total=customPeriodTotal(p);
+  const totalClass=Math.abs(total-100)<=0.01?"ok":"bad";
+  return `<div class="field"><label>Start year</label><input data-p="customStartYear" type="number" min="1" max="${contractDuration()}" value="${p.customStartYear}"></div>
+    <div class="field"><label>End year</label><input data-p="customEndYear" type="number" min="${p.customStartYear}" max="${contractDuration()}" value="${p.customEndYear}"></div>
+    <div class="field full">
+      <div class="custom-period-head">
+        <label>Yearly distribution</label>
+        <button type="button" class="mini-btn" onclick="equalSplitCustomPeriod()">Equal split</button>
+      </div>
+      <div class="custom-period-grid">${years.map(year=>`<div class="custom-period-cell">
+        <label>${yearCode(year)}</label>
+        <input data-pct-year="${year}" type="number" min="0" max="100" step="0.01" value="${p.customDistribution[year]??0}">
+      </div>`).join('')}</div>
+      <div class="custom-period-total ${totalClass}">Total ${f1(total)}% / 100%</div>
+    </div>`;
+}
+function renderPhasingFields(){
+  const r=window._draft, p=r.phasing=normalizePhasing(r);
+  const box=document.getElementById('phasing-fields');
+  const summary=document.getElementById('phasing-summary');
+  if(!box)return;
+  let html="";
+  const phaseHtml=`<div class="field"><label>Phase</label>${phaseSelectP(p)}</div>`;
+  const modeHtml=`<div class="field"><label>Application mode</label>${selP('mode',PHASING_MODES,p.mode,'onchange="onPhasingChange(event)"')}</div>`;
+  if(p.mode==="recurring"){
+    html=`<div class="field"><label>Start year</label><input data-p="startYear" type="number" min="1" max="${contractDuration()}" value="${p.startYear||1}"></div>
+      <div class="field"><label>End year</label><input data-p="endYear" type="number" min="1" max="${contractDuration()}" value="${p.endYear||contractDuration()}"></div>
+      <div class="field full"><label>Optional planning guide</label>${selGuideP('guide',guideNamesForMode(p.mode),p.guide||"")}</div>`;
+  }else if(p.mode==="specificYear"){
+    html=`<div class="field"><label>Contract year</label><input data-p="specificYear" type="number" min="1" max="${contractDuration()}" value="${p.specificYear||1}"></div>`;
+  }else if(p.mode==="contractPeriod"){
+    p.period=p.period||"firstQuarter";
+    html=`<div class="field"><label>Period</label>${selP('period',CONTRACT_PERIODS,p.period)}</div>${p.period==="custom"?renderCustomPeriodSplit(p):""}`;
+  }else if(p.mode==="overhaulGuide"||p.mode==="renewalGuide"){
+    html=`<div class="field full"><label>Planning guide</label>${selGuideP('guide',guideNamesForMode(p.mode),p.guide||r.planningGuide||"")}</div>`;
+  }else if(p.mode==="mobilisation"||p.mode==="demobilisation"){
+    html=`<div class="field full"><label>Optional planning guide</label>${selGuideP('guide',guideNamesForMode(p.mode),p.guide||"")}</div>`;
+  }else{
+    html=`<div class="field full"><label>Application</label><input value="${phasingSummary(p)}" disabled></div>`;
+  }
+  box.innerHTML=phaseHtml+modeHtml+html;
+  box.querySelectorAll('[data-p]').forEach(el=>{el.addEventListener('input',onPhasingChange);el.addEventListener('change',onPhasingChange);});
+  box.querySelectorAll('[data-pct-year]').forEach(el=>{el.addEventListener('input',onPhasingChange);el.addEventListener('change',onPhasingChange);});
+  box.querySelectorAll('[data-phase-select],[data-phase-custom]').forEach(el=>{el.addEventListener('input',onPhasingChange);el.addEventListener('change',onPhasingChange);});
+  if(summary)summary.textContent=[phasingSummary(p),guidePreview(p.guide)].filter(Boolean).join(" | ");
+}
+function equalSplitCustomPeriod(){
+  const r=window._draft, p=r.phasing=normalizePhasing(r);
+  if(p.mode!=="contractPeriod"||p.period!=="custom")return;
+  normalizeCustomPeriod(p,true);
+  syncPlanningGuideFromPhasing(r);
+  renderPhasingFields();
+  onFormChange();
+}
+function onPhasingChange(event){
+  const r=window._draft, p=r.phasing=normalizePhasing(r);
+  const activeField=event?.target?.dataset?.p||(event?.target?.dataset?.phaseSelect!==undefined?"phaseSelect":null)||(document.activeElement?.dataset?.p);
+  const phaseSelect=document.querySelector('#drawer-body [data-phase-select]');
+  const phaseCustom=document.querySelector('#drawer-body [data-phase-custom]');
+  if(phaseSelect){
+    p.phaseManual=phaseSelect.value==="__custom__";
+    p.phase=p.phaseManual?normalizePhase(phaseCustom?.value||p.phase):normalizePhase(phaseSelect.value);
+  }
+  document.querySelectorAll('#drawer-body [data-p]').forEach(el=>{
+    const f=el.dataset.p;let v=el.value;
+    if(f==="startYear"||f==="endYear"||f==="specificYear"||f==="customStartYear"||f==="customEndYear")v=parseInt(v,10)||null;
+    p[f]=v;
+  });
+  document.querySelectorAll('#drawer-body [data-pct-year]').forEach(el=>{
+    p.customDistribution=p.customDistribution||{};
+    p.customDistribution[el.dataset.pctYear]=+(parseFloat(el.value)||0).toFixed(2);
+  });
+  if(p.mode==="recurring"){
+    p.startYear=Math.max(1,Math.min(contractDuration(),p.startYear||1));
+    p.endYear=Math.max(p.startYear,Math.min(contractDuration(),p.endYear||contractDuration()));
+  }
+  if(p.mode==="specificYear")p.specificYear=Math.max(1,Math.min(contractDuration(),p.specificYear||1));
+  if(p.mode==="contractPeriod"&&p.period==="custom")normalizeCustomPeriod(p,["period","customStartYear","customEndYear"].includes(activeField));
+  syncPlanningGuideFromPhasing(r);
+  const planningInput=document.querySelector('#drawer-body [data-f="planningGuide"]');
+  if(planningInput)planningInput.value=r.planningGuide||"";
+  const summary=document.getElementById('phasing-summary');
+  if(summary)summary.textContent=[phasingSummary(p),guidePreview(p.guide)].filter(Boolean).join(" | ");
+  const totalEl=document.querySelector('#drawer-body .custom-period-total');
+  if(totalEl&&p.mode==="contractPeriod"&&p.period==="custom"){
+    const total=customPeriodTotal(p);
+    totalEl.textContent=`Total ${f1(total)}% / 100%`;
+    totalEl.classList.toggle("ok",Math.abs(total-100)<=0.01);
+    totalEl.classList.toggle("bad",Math.abs(total-100)>0.01);
+  }
+  if(["mode","period","customStartYear","customEndYear","phaseSelect"].includes(activeField))renderPhasingFields();
+  onFormChange();
+}
+function renderForm(){
+  const r=window._draft;
+  r.phasing=normalizePhasing(r);
+  ensureMercuryOverrides(r);
+  syncPlanningGuideFromPhasing(r);
+  const normalizedSubsystem=normalizeSubsystem(r.owner||r.subsystem);
+  r.owner=normalizedSubsystem;
+  r.subsystem=normalizedSubsystem;
+  document.getElementById('drawer-body').innerHTML=`
+    <div class="template-box">
+      <div class="field"><label>Rail risk template</label>${templateSelect()}</div>
+      <button class="btn" onclick="applyRiskTemplate()">Apply template</button>
+    </div>
+    <div class="fgrid">
+      <div class="field"><label>Risk number <span class="req">*</span></label><input data-f="number" type="number" min="1" step="1" value="${esc(r.number)}"></div>
+      <div class="field full"><label>Risk description <span class="req">*</span></label>
+        <textarea data-f="desc" placeholder="Describe the risk...">${esc(r.desc)}</textarea></div>
+      <div class="field"><label>Subsystem / Owner</label>${sel('owner',SUBSYSTEMS,r.owner||r.subsystem,'onchange="onSubsystemOwnerChange(this.value)"')}</div>
+      <div class="field"><label>Work Package / Function</label><input data-f="wp" value="${esc(r.wp)}" placeholder="WP0"></div>
+      <div class="field"><label>Category</label>${sel('cat',CATEGORIES,r.cat)}</div>
+      <div class="field"><label>Status</label>${sel('status',STATUSES,r.status,'onchange="onFormChange()"')}</div>
+    </div>
+
+    <div class="phasing-box">
+      <div class="phasing-head"><strong>Risk application</strong><span class="hint">${contractDuration()}-year contract</span></div>
+      <div id="phasing-fields" class="fgrid"></div>
+      <div class="phasing-summary" id="phasing-summary"></div>
+    </div>
+
+    <div class="assess-box">
+      <div class="field"><label>Impact <span class="req">*</span></label>${sel('impact',Object.keys(IMPACTS),r.impact,'onchange="onFormChange()"')}</div>
+      <div class="field"><label>Likelihood <span class="req">*</span></label>${sel('like',Object.keys(LIKE),r.like,'onchange="onFormChange()"')}</div>
+      <div class="assess-out"><span class="ao-lab">Profile</span><span class="ao-val" id="live-profile">-</span></div>
+    </div>
+
+    <div class="valo-box">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <strong style="font-size:13px">Valuation</strong>
+        <div class="field" style="flex-direction:row;align-items:center;gap:8px;margin-left:auto">
+          <label style="margin:0">Gross risk cost</label>
+          <input data-f="valueLocal" type="number" step="any" value="${r.valueLocal||0}" oninput="onFormChange()" style="width:110px">
+          <span style="color:var(--muted);font-size:11px">k</span>
+          ${sel('currency',fxCurrencies(),r.currency,'onchange="onFormChange()" style="width:90px"')}
+        </div>
+        <div class="field" style="flex-direction:row;align-items:center;gap:8px">
+          <label style="margin:0">Provision to retain</label>
+          <input data-f="provisionPct" type="number" step="1" value="${r.provisionPct??25}" oninput="onFormChange()" style="width:64px"><span style="color:var(--muted)">%</span>
+        </div>
+      </div>
+      <div class="valo-grid" id="valo-out"></div>
+    </div>
+
+    <div class="acc">
+      <div class="acc-h">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--rail)" stroke-width="2" stroke-linecap="round"><path d="M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+        <h4>Mitigation action plan</h4>
+        <button class="mini-btn" onclick="addAction()">+ Add action</button>
+      </div>
+      <div id="actions-list"></div>
+    </div>
+
+    <div class="phasing-box">
+      <div class="phasing-head"><strong>Comments</strong><span class="hint">optional</span></div>
+      <div class="field"><textarea data-f="comments" placeholder="Add assumptions, review notes, decisions or open points...">${esc(r.comments||"")}</textarea></div>
+    </div>
+
+    <details class="merc" open>
+      <summary>Mercury configuration (automatically generated) <span class="tag">auto</span></summary>
+      <div class="merc-body">
+        <p class="merc-note">These columns are derived from the risk fields. Planning Guide comes from Risk Application, Associated WP comes from Work Package / Function, and Price List Code 3 comes from Subsystem.</p>
+        <div class="fgrid" style="margin-bottom:14px">
+          <div class="field"><label>Planning Guide</label>${selFree('planningGuide',guideNames(),r.planningGuide,'disabled')}</div>
+          <div class="field"><label>Mercury Planning Guide</label>
+            <label style="flex-direction:row;gap:8px;align-items:center;color:var(--muted)">
+              <input data-mpg-manual type="checkbox" ${ensureMercuryOverrides(r).planningGuideManual?'checked':''} style="width:auto">
+              Manual value
+            </label>
+          </div>
+          ${ensureMercuryOverrides(r).planningGuideManual?`<div class="field full"><label>Manual Mercury Planning Guide</label><input data-mpg-value value="${esc(ensureMercuryOverrides(r).planningGuide||r.planningGuide||'')}" placeholder="Mercury planning guide"></div>`:""}
+          <div class="field"><label>Price List Code 2 (activity)</label>${sel('activity',ACTIVITIES,r.activity,'onchange="onFormChange()"')}</div>
+          <div class="field"><label>Price List Code 3 (subsystem)</label>${sel('subsystem',SUBSYSTEMS,r.subsystem,'disabled')}</div>
+        </div>
+        <div class="field" style="margin-bottom:12px">
+          <label style="flex-direction:row;gap:8px;align-items:center;color:var(--muted)">
+            <input data-f="mercuryManual" type="checkbox" ${r.mercuryManual?'checked':''} onchange="onMercuryManualToggle(this.checked)" style="width:auto">
+            Manual Mercury overrides
+          </label>
+        </div>
+        <div id="mercury-overrides"></div>
+        <div class="merc-grid" id="merc-preview"></div>
+      </div>
+    </details>`;
+  bindForm();bindMercuryPlanningGuideOverride();renderPhasingFields();renderActions();renderMercuryOverrides();onFormChange();
+}
+function bindMercuryPlanningGuideOverride(){
+  const r=window._draft;
+  const manual=document.querySelector('#drawer-body [data-mpg-manual]');
+  const value=document.querySelector('#drawer-body [data-mpg-value]');
+  if(manual){
+    manual.addEventListener('change',()=>{
+      const o=ensureMercuryOverrides(r);
+      o.planningGuideManual=manual.checked;
+      if(o.planningGuideManual&&!o.planningGuide)o.planningGuide=r.planningGuide||"";
+      renderForm();
+    });
+  }
+  if(value){
+    const sync=()=>{
+      const o=ensureMercuryOverrides(r);
+      o.planningGuide=value.value;
+      onFormChange();
+    };
+    value.addEventListener('input',sync);
+    value.addEventListener('change',sync);
+  }
+}
+function renderMercuryOverrides(){
+  const r=window._draft;
+  const box=document.getElementById('mercury-overrides');
+  if(!box)return;
+  const o=ensureMercuryOverrides(r);
+  if(!r.mercuryManual){box.innerHTML="";return;}
+  const mc=effectiveMercuryConfig(r);
+  box.innerHTML=`<div class="fgrid" style="margin-bottom:14px">
+    <div class="field"><label>ABS</label><input data-mo="abs" value="${esc(o.abs||mc.abs)}"></div>
+    <div class="field"><label>CARAT Unit</label><input data-mo="caratUnit" value="${esc(o.caratUnit||mc.caratUnit)}"></div>
+    <div class="field"><label>TASKS</label><input data-mo="tasks" value="${esc(o.tasks||mc.tasks)}"></div>
+    <div class="field"><label>Unit Role</label><input data-mo="unitRole" value="${esc(o.unitRole||mc.unitRole)}"></div>
+    <div class="field"><label>On/Off Shore</label>${selMO('shore',["Onshore","Offshore"],o.shore||mc.shore)}</div>
+  </div>`;
+  box.querySelectorAll('[data-mo]').forEach(el=>{
+    el.addEventListener('input',onMercuryOverrideChange);
+    el.addEventListener('change',onMercuryOverrideChange);
+  });
+}
+function selMO(name,opts,val){
+  return `<select data-mo="${name}">${opts.map(o=>`<option ${o===val?'selected':''}>${o}</option>`).join('')}</select>`;
+}
+function onMercuryManualToggle(checked){
+  const r=window._draft;
+  r.mercuryManual=checked;
+  ensureMercuryOverrides(r);
+  renderMercuryOverrides();
+  onFormChange();
+}
+function onMercuryOverrideChange(event){
+  const r=window._draft;
+  const o=ensureMercuryOverrides(r);
+  document.querySelectorAll('#drawer-body [data-mo]').forEach(el=>{o[el.dataset.mo]=el.value;});
+  if(event&&event.target&&event.target.dataset.mo==="caratUnit"){
+    r.unit=o.caratUnit||MERCURY_DEFAULTS.caratUnit;
+  }
+  onFormChange();
+}
+function selFree(name,opts,val,extra=""){
+  return `<input data-f="${name}" list="dl-${name}" value="${esc(val||'')}" placeholder="-" ${extra}>
+    <datalist id="dl-${name}">${opts.map(o=>`<option value="${o}">`).join('')}</datalist>`;
+}
+function templateSelect(){
+  return `<select id="risk-template"><option value="">-- select template --</option>${RISK_TEMPLATES.map((t,i)=>`<option value="${i}">${esc(t.label)}</option>`).join('')}</select>`;
+}
+function onSubsystemOwnerChange(value){
+  if(!window._draft)return;
+  value=normalizeSubsystem(value);
+  window._draft.owner=value;
+  window._draft.subsystem=value;
+  const sub=document.querySelector('#drawer-body [data-f="subsystem"]');
+  if(sub)sub.value=value;
+  onFormChange();
+}
+function phasingFromPlanningGuide(guide){
+  const mode=/OVH|OVERHAUL/i.test(guide)?"overhaulGuide":/REN|RENEW/i.test(guide)?"renewalGuide":/REC|RECUR/i.test(guide)?"recurring":"recurring";
+  return {mode,startYear:1,endYear:contractDuration(),specificYear:null,period:"",guide:guide||""};
+}
+function applyRiskTemplate(){
+  const sel=document.getElementById('risk-template');
+  if(!sel||sel.value===""){toast('Select a template',true);return;}
+  const {label,...fields}=RISK_TEMPLATES[+sel.value];
+  const r=window._draft;
+  Object.assign(r,fields);
+  if(fields.planningGuide)r.phasing=phasingFromPlanningGuide(fields.planningGuide);
+  r.unit=r.unit||"LOCAL";
+  r.status=r.status||"Open";
+  r.currency=r.currency||"EUR";
+  if(r.provisionPct===undefined||r.provisionPct===null)r.provisionPct=25;
+  renderForm();
+  toast('Template applied');
+}
+function bindForm(){
+  document.querySelectorAll('#drawer-body [data-f]').forEach(el=>{
+    const sync=()=>{
+      const f=el.dataset.f;let v=el.value;
+      if(el.type==='checkbox')v=el.checked;
+      if(f==='valueLocal'||f==='provisionPct')v=parseFloat(v)||0;
+      if(f==='number')v=parseInt(v,10)||0;
+      window._draft[f]=v;
+      onFormChange();
+    };
+    el.addEventListener('input',sync);
+    el.addEventListener('change',sync);
+  });
+}
+function onFormChange(){
+  const r=window._draft;
+  // sync simple fields from inputs (selects fire change not input sometimes)
+  document.querySelectorAll('#drawer-body [data-f]').forEach(el=>{
+    const f=el.dataset.f;let v=el.value;
+    if(el.type==='checkbox')v=el.checked;
+    if(f==='valueLocal'||f==='provisionPct')v=parseFloat(v)||0;
+    if(f==='number')v=parseInt(v,10)||0;
+    r[f]=v;
+  });
+  const rid=document.getElementById('dr-rid');
+  if(rid)rid.textContent='#'+(r.number||'-');
+  document.querySelectorAll('#drawer-body [data-mo]').forEach(el=>{
+    const o=ensureMercuryOverrides(r);
+    o[el.dataset.mo]=el.value;
+  });
+  const mpgManual=document.querySelector('#drawer-body [data-mpg-manual]');
+  const mpgValue=document.querySelector('#drawer-body [data-mpg-value]');
+  if(mpgManual){
+    const o=ensureMercuryOverrides(r);
+    o.planningGuideManual=mpgManual.checked;
+    if(mpgValue)o.planningGuide=mpgValue.value;
+  }
+  if(r.mercuryManual){
+    const o=ensureMercuryOverrides(r);
+    r.unit=o.caratUnit||r.unit||MERCURY_DEFAULTS.caratUnit;
+  }else{
+    r.unit=MERCURY_DEFAULTS.caratUnit;
+  }
+  if(r.owner){
+    r.owner=normalizeSubsystem(r.owner);
+    r.subsystem=r.owner;
+    const sub=document.querySelector('#drawer-body [data-f="subsystem"]');
+    if(sub&&sub.value!==r.owner)sub.value=r.owner;
+  }
+  syncPlanningGuideFromPhasing(r);
+  const planningInput=document.querySelector('#drawer-body [data-f="planningGuide"]');
+  if(planningInput&&planningInput.value!==r.planningGuide)planningInput.value=r.planningGuide||"";
+  const p=profile(r.impact,r.like);
+  const lp=document.getElementById('live-profile');
+  if(lp){lp.innerHTML=profileChipHTML(p);}
+  const v=valorize(r);
+  const target=targetCurrency();
+  const out=document.getElementById('valo-out');
+  if(out)out.innerHTML=`
+    ${vcell('Occurrences',v.occurrences)}
+    ${vcell('Total gross cost (k'+target+')',f1(v.grossEUR))}
+    ${vcell('Total effective reduction',f1(v.effect))}
+    ${vcell('Total effective cost',f1(v.cost))}
+    ${vcell('Total residual risk',f1(v.residual),'accent')}
+    ${vcell('Total retained provision',f1(v.provision),'accent')}
+    <div class="valo-note" style="grid-column:1/-1">For Recurrent annual, the entered value is annual and totals are multiplied by occurrences. Mercury keeps the unit provision and uses Nb Tot. of Occurency for the repetition.</div>`;
+  // mercury preview
+  const mp=document.getElementById('merc-preview');
+  if(mp){const m=mercury(r);mp.innerHTML=Object.entries(m).map(([k,val])=>{
+    const auto=!["Planning Guide","Price List Code 2","Price List Code 3"].includes(k);
+    return `<div class="mc"><span class="mk">${k}</span><span class="mv ${auto?'auto':''}">${val===''?'-':val}</span></div>`;
+  }).join('');}
+}
+function vcell(l,v,cls=""){return `<div class="valo-cell ${cls}"><div class="vl">${l}</div><div class="vv">${v}</div></div>`;}
+
+/* ----- actions ----- */
+function renderActions(){
+  const r=window._draft;
+  const list=document.getElementById('actions-list');
+  if(!r.actions||!r.actions.length){list.innerHTML='<div style="padding:14px 16px;color:var(--muted-2);font-size:12px;background:var(--panel-2);border-top:1px solid var(--line)">No action. Effective reduction and effective cost remain 0.</div>';return;}
+  list.innerHTML=r.actions.map((a,i)=>`
+    <div class="action-item">
+      <div class="ai-top">
+        <span class="ai-num">A${a.number}</span>
+        ${selA('status',ACTION_STATUSES,a.status,i)}
+        <button class="mini-btn del" style="margin-left:auto" onclick="delAction(${i})">Delete</button>
+      </div>
+      <div class="ai-grid">
+        <div class="field full" style="grid-column:1/-1"><label>Action description</label><input data-a="${i}" data-af="desc" value="${esc(a.desc)}" oninput="actField(${i},'desc',this.value)"></div>
+        <div class="field"><label>Owner</label><input data-a="${i}" data-af="owner" value="${esc(a.owner)}" oninput="actField(${i},'owner',this.value)"></div>
+        <div class="field"><label>Target date</label><input type="date" value="${a.target||''}" oninput="actField(${i},'target',this.value)"></div>
+        <div class="field"><label>Target reduction (k local)</label><input type="number" step="any" value="${a.effectLocal||0}" oninput="actField(${i},'effectLocal',parseFloat(this.value)||0)"></div>
+        <div class="field"><label>Target action cost (k local)</label><input type="number" step="any" value="${a.costLocal||0}" oninput="actField(${i},'costLocal',parseFloat(this.value)||0)"></div>
+        <div class="field"><label>Currency</label>${selA('currency',fxCurrencies(),a.currency||r.currency,i)}</div>
+        <div class="field"><label>Progress ${a.progress||0}%</label><input type="range" min="0" max="100" value="${a.progress||0}" oninput="actField(${i},'progress',+this.value);this.previousElementSibling||0;this.parentElement.querySelector('label').textContent='Progress '+this.value+'%'"></div>
+      </div>
+      <div class="progress"><i style="width:${a.progress||0}%"></i></div>
+    </div>`).join('');
+}
+function selA(field,opts,val,i){return `<select onchange="actField(${i},'${field}',this.value)">${opts.map(o=>`<option ${o===val?'selected':''}>${o}</option>`).join('')}</select>`;}
+function actField(i,f,v){window._draft.actions[i][f]=v;if(f==='effectLocal'||f==='costLocal'||f==='status'||f==='currency'||f==='progress')onFormChange();}
+function addAction(){const r=window._draft;r.actions=r.actions||[];r.actions.push({id:uid(),number:r.actions.length+1,desc:"",owner:"",status:"Open",target:"",effectLocal:0,costLocal:0,currency:r.currency,progress:0});renderActions();onFormChange();}
+function delAction(i){window._draft.actions.splice(i,1);window._draft.actions.forEach((a,k)=>a.number=k+1);renderActions();onFormChange();}
+
+function customPeriodIssue(p){
+  if(!p||p.mode!=="contractPeriod"||p.period!=="custom")return "";
+  const years=normalizeCustomPeriod(p);
+  const distribution=contractPeriodDistribution(p);
+  const hasNegative=years.some(year=>distribution[year]<0);
+  if(hasNegative)return "Custom period percentages must be non-negative";
+  const total=Object.values(distribution).reduce((sum,value)=>sum+(parseFloat(value)||0),0);
+  if(Math.abs(total-100)>0.01)return `Custom period total must be 100% (current ${f1(total)}%)`;
+  return "";
+}
+function saveRisk(){
+  const r=window._draft;
+  r.phasing=normalizePhasing(r);
+  ensureMercuryOverrides(r);
+  syncPlanningGuideFromPhasing(r);
+  r.owner=normalizeSubsystem(r.owner||r.subsystem);
+  r.subsystem=r.owner;
+  r.number=parseInt(r.number,10)||0;
+  if(!Number.isInteger(r.number)||r.number<1){toast('Risk number must be a positive integer',true);return;}
+  const duplicate=DATA.risks.find(x=>x.id!==editingId&&+x.number===r.number);
+  if(duplicate){toast(`Risk number #${r.number} is already used`,true);return;}
+  if(!r.desc||!r.desc.trim()){toast('Enter a description',true);return;}
+  if(!r.impact||!r.like){toast('Impact and likelihood are required',true);return;}
+  if(!r.owner||!r.wp||!r.cat){toast('Complete owner, WP and category',true);return;}
+  if(phasingModeHasGuide(r.phasing.mode)&&!r.planningGuide){toast('Select the Risk Application planning guide',true);return;}
+  if(!r.activity||!r.subsystem){toast('Complete the Mercury configuration',true);return;}
+  const mo=ensureMercuryOverrides(r);
+  if(mo.planningGuideManual&&!String(mo.planningGuide||"").trim()){toast('Enter the manual Mercury Planning Guide',true);return;}
+  if((r.phasing.mode==="overhaulGuide"||r.phasing.mode==="renewalGuide")&&!r.phasing.guide){toast('Select the phasing planning guide',true);return;}
+  const customIssue=customPeriodIssue(r.phasing);
+  if(customIssue){toast(customIssue,true);return;}
+  if(editingId){const idx=DATA.risks.findIndex(x=>x.id===editingId);DATA.risks[idx]={...r,id:editingId};}
+  else{r.id=uid();DATA.risks.push(r);}
+  persist();closeRisk();refreshAll();toast('Risk saved');
+}
+function deleteRisk(){
+  if(!editingId)return;
+  if(!confirm('Delete this risk and its action plan?'))return;
+  DATA.risks=DATA.risks.filter(x=>x.id!==editingId);
+  persist();closeRisk();refreshAll();toast('Risk deleted');
+}
+function deleteRiskFromTable(id,event){
+  if(event)event.stopPropagation();
+  const r=DATA.risks.find(x=>x.id===id);
+  if(!r)return;
+  if(!confirm(`Delete risk #${r.number} and its action plan?`))return;
+  DATA.risks=DATA.risks.filter(x=>x.id!==id);
+  persist();refreshAll();toast('Risk deleted');
+}
+function deleteAllRisks(){
+  if(!DATA.risks.length){toast('No risk to delete',true);return;}
+  if(!confirm(`Delete all risks (${DATA.risks.length}) and their action plans? This action is irreversible.`))return;
+  DATA.risks=[];
+  matrixFilter=null;
+  persist();refreshAll();toast('Register cleared');
+}
+
+/* =================== EXPORT =================== */
+function syncMeta(skipRefresh=false){
+  DATA.meta.project=document.getElementById('meta-project').value;
+  const typeSelect=document.getElementById('meta-code');
+  DATA.meta.code=typeSelect.value==="Custom"?(document.getElementById('meta-type-custom').value||"Custom"):typeSelect.value;
+  DATA.meta.projectCode=document.getElementById('meta-project-code').value||"CDG";
+  DATA.meta.riskCode=document.getElementById('meta-risk-code').value||"RISK";
+  DATA.meta.date=document.getElementById('meta-date').value;
+  DATA.meta.contractStartDate=document.getElementById('meta-start-date').value||`${contractStartYear()}-01-01`;
+  DATA.meta.contractStartYear=contractStartYear();
+  DATA.meta.contractDuration=parseInt(document.getElementById('meta-duration').value,10)||contractDuration();
+  const currencySelect=document.getElementById('meta-currency');
+  DATA.meta.baseCurrency=normalizeCurrency(currencySelect.value==="Custom"?(document.getElementById('meta-currency-custom').value||"EUR"):currencySelect.value||"EUR");
+  ensureFx();
+  DATA.risks.forEach(r=>syncPlanningGuideFromPhasing(r));
+  if(window._draft){
+    syncPlanningGuideFromPhasing(window._draft);
+    const planningInput=document.querySelector('#drawer-body [data-f="planningGuide"]');
+    if(planningInput)planningInput.value=window._draft.planningGuide||"";
+  }
+  persist();
+  updateSidebarProjectName();
+  if(!skipRefresh)refreshAll();
+}
+function setTypeInput(value){
+  const known=["Metro","Tram","APM","Mainline","Monorail"];
+  const select=document.getElementById('meta-code');
+  const customWrap=document.getElementById('meta-type-custom-wrap');
+  const custom=document.getElementById('meta-type-custom');
+  const normalized=value==="20378"?"Metro":(value||"Metro");
+  if(known.includes(normalized)){
+    select.value=normalized;
+    customWrap.style.display="none";
+    custom.value="";
+  }else{
+    select.value="Custom";
+    customWrap.style.display="";
+    custom.value=normalized;
+  }
+}
+function onTypeSelectChange(){
+  const customWrap=document.getElementById('meta-type-custom-wrap');
+  customWrap.style.display=document.getElementById('meta-code').value==="Custom"?"":"none";
+  syncMeta(true);
+}
+function setCurrencyInput(value){
+  ensureFx();
+  const select=document.getElementById('meta-currency');
+  const customWrap=document.getElementById('meta-currency-custom-wrap');
+  const custom=document.getElementById('meta-currency-custom');
+  const currencies=fxCurrencies().sort((a,b)=>a.localeCompare(b));
+  const normalized=normalizeCurrency(value||"EUR");
+  const isKnown=currencies.includes(normalized);
+  select.innerHTML=currencies.map(c=>`<option value="${c}" ${isKnown&&c===normalized?'selected':''}>${c}</option>`).join('')+`<option value="Custom" ${isKnown?'':'selected'}>Custom</option>`;
+  customWrap.style.display=isKnown?"none":"";
+  custom.value=isKnown?"":normalized;
+}
+function onCurrencySelectChange(){
+  const isCustom=document.getElementById('meta-currency').value==="Custom";
+  document.getElementById('meta-currency-custom-wrap').style.display=isCustom?"":"none";
+  if(isCustom){
+    document.getElementById('meta-currency-custom').focus();
+    return;
+  }
+  syncMeta(true);
+  renderCurrencySelectAfterSync();
+  refreshLiveFxRates(true);
+}
+function renderCurrencySelectAfterSync(){
+  setCurrencyInput(DATA.meta.baseCurrency||"EUR");
+  renderFxTable();
+}
+
+function exportMercury(){
+  syncMeta(true);
+  const cols=["Phase","RISK ID","Planning Guide","PBS","ABS","CARAT Unit","ASSOCIATED WP","TASKS","Unit Role","On/Off Shore","Delegated person","Price List Code 1","Price List Code 2","Price List Code 3","Currency","Nb Tot. of Occurency","Quantity","Fixed Contingencies/ Risk: Most likely value","Risk type"];
+  const aoa=[cols];
+  DATA.risks.forEach((r,i)=>{const m=mercury(r,i);aoa.push(cols.map(c=>m[c]));});
+  const ws=XLSX.utils.aoa_to_sheet(aoa);
+  ws['!cols']=cols.map(c=>({wch:Math.max(12,c.length+2)}));
+  const planningGuideCol=cols.indexOf("Planning Guide");
+  DATA.risks.forEach((r,i)=>{
+    const o=ensureMercuryOverrides(r);
+    if(!o.planningGuideManual)return;
+    const addr=XLSX.utils.encode_cell({r:i+1,c:planningGuideCol});
+    if(ws[addr])ws[addr].s={
+      fill:{patternType:"solid",fgColor:{rgb:"FFF2CC"}},
+      border:{
+        top:{style:"thin",color:{rgb:"D6B656"}},
+        bottom:{style:"thin",color:{rgb:"D6B656"}},
+        left:{style:"thin",color:{rgb:"D6B656"}},
+        right:{style:"thin",color:{rgb:"D6B656"}}
+      }
+    };
+  });
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,"Mercury_Config");
+  XLSX.writeFile(wb,`Mercury_Risk_Export_${(DATA.meta.code||'project')}.xlsx`);
+  toast('Mercury sheet generated');
+}
+
+function exportFull(){
+  syncMeta(true);
+  const target=targetCurrency();
+  // Register
+  const rcols=["Risk Number","Unit Name","WP / Function","Risk Description","Owner / Sub System","Category","Status","Risk Application","Occurrences","Impact","Likelihood","Risk Profile","Score",`Total Value Before Mitigation (k${target})`,`Total Effect of Mitigation (k${target})`,`Total Cost of Mitigation (k${target})`,`Total Value After Mitigation (k${target})`,"Provision %",`Total Provision Approved (k${target})`,"Local Currency","Value Before Mitigation per Occurrence (kLocal)","Comments"];
+  const rAoa=[["RISK REGISTER - "+(DATA.meta.project||'')],[ "Type",DATA.meta.code,"Date",DATA.meta.date],[],rcols];
+  DATA.risks.forEach(r=>{const v=valorize(r),p=profile(r.impact,r.like),mc=effectiveMercuryConfig(r);
+    rAoa.push([r.number,mc.caratUnit,r.wp,r.desc,r.owner,r.cat,r.status,phasingSummary(normalizePhasing(r)),v.occurrences,r.impact,r.like,p.name,p.score,
+      +v.grossEUR.toFixed(2),+v.effect.toFixed(2),+v.cost.toFixed(2),+v.residual.toFixed(2),(r.provisionPct??25)+'%',+v.provision.toFixed(2),r.currency,r.valueLocal,r.comments||""]);});
+  const rws=XLSX.utils.aoa_to_sheet(rAoa);rws['!cols']=rcols.map(c=>({wch:Math.max(11,c.length)}));
+  // Actions
+  const acols=["Risk Number","Unit Name","Action Number","Action Description","Action Owner","Action Status","Targeted Closure Date","Target Reduction (kLocal)","Target Action Cost (kLocal)","Currency",`Target Reduction (k${target})`,`Target Action Cost (k${target})`,"Progress %"];
+  const aAoa=[["ACTION PLAN REGISTER"],[],acols];
+  DATA.risks.forEach(r=>(r.actions||[]).forEach(a=>{const af=fx(a.currency||r.currency),mc=effectiveMercuryConfig(r);
+    aAoa.push([r.number,mc.caratUnit,a.number,a.desc,a.owner,a.status,a.target,a.effectLocal,a.costLocal,a.currency||r.currency,
+      +((a.effectLocal||0)*af).toFixed(2),+((a.costLocal||0)*af).toFixed(2),(a.progress||0)+'%']);}));
+  const aws=XLSX.utils.aoa_to_sheet(aAoa);aws['!cols']=acols.map(c=>({wch:Math.max(11,c.length)}));
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,rws,"Risk_Register");
+  XLSX.utils.book_append_sheet(wb,aws,"Action_Plan_Register");
+  XLSX.writeFile(wb,`Risk_Register_${(DATA.meta.code||'project')}.xlsx`);
+  toast('Full register exported');
+}
+
+function exportGeneratedPlanningGuides(){
+  syncMeta(true);
+  const periodGuides=new Map();
+  const profileGuides=new Map();
+  const profileYears=new Set();
+  let exportError="";
+
+  DATA.risks.forEach(r=>{
+    if(exportError)return;
+    r.owner=normalizeSubsystem(r.owner||r.subsystem);
+    r.subsystem=r.owner||r.subsystem;
+    syncPlanningGuideFromPhasing(r);
+    const p=normalizePhasing(r);
+    const name=r.planningGuide||p.guide||"";
+    if(!name)return;
+    const phase=riskPhase(r);
+    const guideKey=`${phase}||${name}`;
+
+    if(p.mode==="specificYear"){
+      const year=Math.max(1,Math.min(contractDuration(),parseInt(p.specificYear,10)||1));
+      if(!periodGuides.has(guideKey)){
+        const range=contractYearDateRange(year);
+        periodGuides.set(guideKey,{phase,name,startDate:range.startDate,endDate:range.endDate,months:12,years:1});
+      }
+    }
+
+    if(p.mode==="contractPeriod"){
+      const customIssue=customPeriodIssue(p);
+      if(customIssue){exportError=`${name}: ${customIssue}`;return;}
+      const distribution=contractPeriodDistribution(p);
+      Object.keys(distribution).forEach(year=>profileYears.add(+year));
+      const currency=r.currency||DATA.meta.baseCurrency||"EUR";
+      const signature=distributionSignature(distribution);
+      if(!profileGuides.has(guideKey)){
+        profileGuides.set(guideKey,{
+          phase,
+          subsystem:r.subsystem||r.owner||"",
+          name,
+          currency,
+          distribution,
+          signature
+        });
+      }else{
+        const existing=profileGuides.get(guideKey);
+        if(existing.signature!==signature||existing.currency!==currency){
+          exportError=`Planning guide conflict on ${phase} / ${name}: same phase and guide with different profile or currency`;
+        }
+      }
+    }
+  });
+
+  if(exportError){
+    toast(exportError,true);
+    return;
+  }
+
+  if(!periodGuides.size&&!profileGuides.size){
+    toast('No generated planning guides to export',true);
+    return;
+  }
+
+  const years=[...profileYears].sort((a,b)=>a-b);
+  const profileHeader=["Phase","Subsystem","Planning Guide","Currency",...years.map(yearLabel)];
+  const profileAoa=[profileHeader];
+  profileGuides.forEach(g=>{
+    profileAoa.push([g.phase,g.subsystem,g.name,g.currency,...years.map(y=>g.distribution[y]??"")]);
+  });
+
+  const periodAoa=[["Phase","Planning Guide","Start Date","End Date","Months","Years"]];
+  periodGuides.forEach(g=>periodAoa.push([g.phase,g.name,g.startDate,g.endDate,g.months,g.years]));
+
+  const wb=XLSX.utils.book_new();
+  const pws=XLSX.utils.aoa_to_sheet(profileAoa);
+  pws['!cols']=profileHeader.map(c=>({wch:Math.max(12,String(c).length+2)}));
+  const ows=XLSX.utils.aoa_to_sheet(periodAoa);
+  ows['!cols']=[{wch:12},{wch:34},{wch:14},{wch:14},{wch:10},{wch:10}];
+  XLSX.utils.book_append_sheet(wb,pws,"Planning_Guide_Profile");
+  XLSX.utils.book_append_sheet(wb,ows,"Other_Guide_Planning");
+  XLSX.writeFile(wb,`Generated_Planning_Guides_${codePart(DATA.meta.projectCode,"project")}.xlsx`);
+  toast('Generated planning guides exported');
+}
+
+function saveJSON(){syncMeta();const blob=new Blob([JSON.stringify(DATA,null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`RiskProject_${(DATA.meta.code||'project')}.json`;a.click();toast('Project saved');}
+function loadJSON(input){const f=input.files[0];if(!f)return;const rd=new FileReader();
+  rd.onload=e=>{try{DATA=JSON.parse(e.target.result);ensurePlanningGuides();normalizeRiskSubsystems();ensureFx();PROJECTS.activeId=PROJECTS.activeId||uid();persist();initMeta();refreshAll();updateGuideImportStatus();toast('Project loaded');}catch(err){toast('Invalid file',true);}};
+  rd.readAsText(f);input.value='';}
+
+function cellText(v){
+  if(v===null||v===undefined)return "";
+  if(v instanceof Date&&!isNaN(v))return v.toISOString().slice(0,10);
+  return String(v).trim();
+}
+function cellNum(v){
+  if(v===null||v===undefined||v==="")return 0;
+  if(typeof v==="number")return Number.isFinite(v)?v:0;
+  const n=parseFloat(String(v).replace(/\s/g,'').replace(',','.'));
+  return Number.isFinite(n)?n:0;
+}
+function parsePlanningGuideWorkbook(wb,source){
+  const profiles=[], periods=[];
+  const profileWs=wb.Sheets["Planning_Guide_Profile"];
+  if(profileWs){
+    const rows=XLSX.utils.sheet_to_json(profileWs,{header:1,defval:"",raw:true});
+    const headers=rows[0]||[];
+    const years=headers.map((h,i)=>{
+      const txt=cellText(h);
+      const match=txt.match(/^Year\s*(\d+)$/i);
+      return {i,year:match?parseInt(match[1],10):parseInt(txt,10)};
+    }).filter(x=>Number.isFinite(x.year)&&x.year>0);
+    rows.slice(1).forEach(row=>{
+      const name=cellText(row[2]);
+      if(!name)return;
+      const distribution=years.map(({i,year})=>({year,value:cellNum(row[i])})).filter(x=>x.value!==0);
+      profiles.push({kind:"profile",phase:cellText(row[0]),subsystem:cellText(row[1]),name,currency:cellText(row[3]),distribution});
+    });
+  }
+  const otherWs=wb.Sheets["Other_Guide_Planning"];
+  if(otherWs){
+    const rows=XLSX.utils.sheet_to_json(otherWs,{header:1,defval:"",raw:true});
+    const headers=rows[0]||[];
+    const hasPhase=/^Phase$/i.test(cellText(headers[0]));
+    const offset=hasPhase?1:0;
+    rows.slice(1).forEach(row=>{
+      const name=cellText(row[offset]);
+      if(!name)return;
+      periods.push({kind:"period",phase:hasPhase?cellText(row[0]):"",name,startDate:cellText(row[offset+1]),endDate:cellText(row[offset+2]),months:cellNum(row[offset+3]),years:cellNum(row[offset+4])});
+    });
+  }
+  if(!profiles.length&&!periods.length)throw new Error("Planning_Guide_Profile / Other_Guide_Planning sheets not found or empty");
+  return {source,importedAt:new Date().toISOString(),profiles,periods};
+}
+function loadPlanningGuides(input){
+  const f=input.files[0]; if(!f)return;
+  const rd=new FileReader();
+  rd.onload=e=>{
+    try{
+      const wb=XLSX.read(e.target.result,{type:"array",cellDates:true});
+      DATA.planningGuides=parsePlanningGuideWorkbook(wb,f.name);
+      persist();updateGuideImportStatus();
+      if(window._draft)renderForm();
+      toast(`${DATA.planningGuides.profiles.length} profiles and ${DATA.planningGuides.periods.length} guides imported`);
+    }catch(err){
+      console.error(err);
+      toast("Planning guide import failed: "+err.message,true);
+    }finally{input.value="";}
+  };
+  rd.readAsArrayBuffer(f);
+}
+function updateGuideImportStatus(){
+  const el=document.getElementById('guide-import-status');
+  if(!el)return;
+  const g=ensurePlanningGuides();
+  el.textContent=g.source?`${g.source} - ${g.profiles.length} profiles / ${g.periods.length} period guides`:"No planning guide imported";
+}
+
+function resetAll(){if(!confirm('Reset and reload examples?'))return;const guides=ensurePlanningGuides();seed();DATA.planningGuides=guides;persist();initMeta();refreshAll();updateGuideImportStatus();toast('Reset done');}
+
+/* =================== NAV =================== */
+function switchView(v){
+  document.querySelectorAll('nav.tabs button').forEach(b=>b.classList.toggle('active',b.dataset.view===v));
+  document.querySelectorAll('.view').forEach(s=>s.classList.toggle('active',s.id==='view-'+v));
+}
+document.querySelectorAll('nav.tabs button').forEach(b=>b.addEventListener('click',()=>{switchView(b.dataset.view);if(b.dataset.view==='dash')renderDash();}));
+
+/* =================== TOAST =================== */
+let toastT;function toast(msg,err){const t=document.getElementById('toast');document.getElementById('toast-msg').textContent=msg;
+  t.style.borderColor=err?'var(--int)':'var(--rail)';t.querySelector('svg').style.color=err?'var(--int)':'var(--rail)';
+  t.classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('show'),2200);}
+
+/* =================== INIT =================== */
+function initMeta(){
+  if(DATA.meta.code==="20378")DATA.meta.code="Metro";
+  if(!DATA.meta.contractStartDate)DATA.meta.contractStartDate=(DATA.meta.contractStartYear||2026)+"-01-01";
+  DATA.meta.contractStartYear=+(DATA.meta.contractStartDate||"").slice(0,4)||DATA.meta.contractStartYear||2026;
+  DATA.meta.contractDuration=DATA.meta.contractDuration||30;
+  DATA.meta.phaseCosts=DATA.meta.phaseCosts||{};
+  DATA.meta.baseCurrency=DATA.meta.baseCurrency||"EUR";
+  DATA.meta.projectCode=DATA.meta.projectCode||"CDG";
+  DATA.meta.riskCode=DATA.meta.riskCode||"RISK";
+  ensureFx();
+  document.getElementById('meta-project').value=DATA.meta.project||'';
+  setTypeInput(DATA.meta.code||'Metro');
+  document.getElementById('meta-project-code').value=DATA.meta.projectCode;
+  document.getElementById('meta-risk-code').value=DATA.meta.riskCode;
+  document.getElementById('meta-date').value=DATA.meta.date||'';
+  document.getElementById('meta-start-date').value=DATA.meta.contractStartDate;
+  document.getElementById('meta-duration').value=DATA.meta.contractDuration;
+  setCurrencyInput(DATA.meta.baseCurrency);
+}
+['meta-project','meta-project-code','meta-risk-code','meta-date','meta-start-date','meta-duration'].forEach(id=>document.getElementById(id).addEventListener('change',syncMeta));
+document.getElementById('meta-code').addEventListener('change',onTypeSelectChange);
+document.getElementById('meta-type-custom').addEventListener('change',syncMeta);
+document.getElementById('meta-currency').addEventListener('change',onCurrencySelectChange);
+document.getElementById('meta-currency-custom').addEventListener('change',()=>{syncMeta();setCurrencyInput(DATA.meta.baseCurrency);});
+document.getElementById('project-select').addEventListener('change',e=>switchProject(e.target.value));
+function refreshAll(){renderDash();renderTable();}
+
+/* =================== ACCESS LOCK =================== */
+const APP_PASSWORD="mohamed";
+function unlockApp(event){
+  if(event)event.preventDefault();
+  const input=document.getElementById('auth-password');
+  const err=document.getElementById('auth-error');
+  if((input.value||'')===APP_PASSWORD){
+    document.getElementById('auth-lock').classList.add('hidden');
+    return false;
+  }
+  err.textContent='Invalid password';
+  input.value='';
+  input.focus();
+  return false;
+}
+function initAuthLock(){
+  const input=document.getElementById('auth-password');
+  if(input)setTimeout(()=>input.focus(),0);
+}
+
+(function init(){
+  if(!restore())seed();
+  ensurePlanningGuides();normalizeRiskSubsystems();ensureFx();persist();initMeta();renderProjectSelect();refreshAll();updateGuideImportStatus();autoRefreshFxRates();initAuthLock();
+})();
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeRisk();});
+</script>
+</body>
+</html>
+
+
