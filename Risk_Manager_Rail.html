@@ -788,10 +788,16 @@ function normalizeSubsystem(value){
     "Infra Prod Mgt":"Infra_Management",
     "Infra Management":"Infra_Management",
     "Infra_Management":"Infra_Management",
-    "Power Supply":"Feeding_System",
+    Track:"Track",
+    "3rd_Rail":"Feeding_System",
+    "3rd Rail":"Feeding_System",
+    "Third Rail":"Feeding_System",
+    CAT:"Feeding_System",
+    Catenary:"Feeding_System",
     "Feeding System":"Feeding_System",
     "Feeding_System":"Feeding_System",
-    Track:"Track",POS:"POS",PSD:"PSD",DEQ:"DEQ",VMI:"VMI",AFC:"AFC",MEP:"MEP"
+    "Power Supply":"POS",
+    POS:"POS",PSD:"PSD",DEQ:"DEQ",VMI:"VMI",AFC:"AFC",MEP:"MEP"
   };
   return map[value]||"";
 }
