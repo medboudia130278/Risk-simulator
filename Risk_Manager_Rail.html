@@ -152,7 +152,7 @@ h2.section::after{content:"";flex:1;height:1px;background:var(--line)}
 /* ---------- Toolbar ---------- */
 .toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
 .btn{background:var(--panel-2);border:1px solid var(--line);color:var(--txt);padding:9px 15px;border-radius:var(--r-s);
-  font-size:13px;font-weight:500;display:inline-flex;align-items:center;gap:7px;transition:.15s}
+  font-size:13px;font-weight:500;display:inline-flex;align-items:center;gap:7px;transition:.15s;text-decoration:none}
 .btn:hover{border-color:var(--rail);color:var(--rail)}
 .btn.primary{background:var(--rail);color:#06222a;border-color:var(--rail);font-weight:600}
 .btn.primary:hover{background:#4fd0e4;color:#06222a}
@@ -621,6 +621,12 @@ details.merc summary .tag{font-size:9.5px;font-family:var(--mono);background:var
           <button class="btn ghost" onclick="document.getElementById('load-json').click()">Load...</button>
           <input type="file" id="load-json" class="hidden-file" accept=".json" onchange="loadJSON(this)">
         </div>
+      </div>
+      <div class="exp-card">
+        <div class="ec-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7v6l3 2"/><path d="M5 22h14"/><path d="M5 2h14v16H5z"/><path d="M9 2v4h6V2"/></svg></div>
+        <h3>User Guide (.pdf)</h3>
+        <p>Downloads the Rail Risk Console user guide for project teams, reviewers and handover support.</p>
+        <a class="btn" href="assets/Rail_Risk_Console_User_Guide.pdf" download>Download user guide</a>
       </div>
       <div class="exp-card">
         <div class="ec-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></div>
