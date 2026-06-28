@@ -2108,8 +2108,7 @@ function renderCurrencySelectAfterSync(){
   renderFxTable();
 }
 
-function exportMercury(){
-  syncMeta(true);
+function createMercuryWorksheet(){
   const cols=["Phase","RISK ID","Planning Guide","PBS","ABS","CARAT Unit","ASSOCIATED WP","TASKS","Unit Role","On/Off Shore","Delegated person","Price List Code 1","Price List Code 2","Price List Code 3","Currency","Nb Tot. of Occurency","Quantity","Fixed Contingencies/ Risk: Most likely value","Risk type"];
   const aoa=[cols];
   DATA.risks.forEach((r,i)=>{const m=mercury(r,i);aoa.push(cols.map(c=>m[c]));});
@@ -2130,6 +2129,12 @@ function exportMercury(){
       }
     };
   });
+  return ws;
+}
+
+function exportMercury(){
+  syncMeta(true);
+  const ws=createMercuryWorksheet();
   const wb=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb,ws,"Mercury_Config");
   XLSX.writeFile(wb,`Mercury_Risk_Export_${(DATA.meta.code||'project')}.xlsx`);
@@ -2156,6 +2161,7 @@ function exportFull(){
   const wb=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb,rws,"Risk_Register");
   XLSX.utils.book_append_sheet(wb,aws,"Action_Plan_Register");
+  XLSX.utils.book_append_sheet(wb,createMercuryWorksheet(),"Mercury_Config");
   XLSX.writeFile(wb,`Risk_Register_${(DATA.meta.code||'project')}.xlsx`);
   toast('Full register exported');
 }
