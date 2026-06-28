@@ -1110,6 +1110,9 @@ function valorize(r){
     unit
   };
 }
+function riskExportId(r){
+  return "Infra IR_RISK"+r.number;
+}
 // Derived Mercury block.
 function mercury(r,idx){
   syncPlanningGuideFromPhasing(r);
@@ -1119,7 +1122,7 @@ function mercury(r,idx){
   const has = (r.valueLocal||0)!==0;
   return{
     "Phase":riskPhase(r),
-    "RISK ID":"Infra IR_RISK"+r.number,
+    "RISK ID":riskExportId(r),
     "Planning Guide":mercuryPlanningGuide(r),
     "PBS":"",
     "ABS":mc.abs,
@@ -2137,17 +2140,17 @@ function exportFull(){
   syncMeta(true);
   const target=targetCurrency();
   // Register
-  const rcols=["Risk Number","Unit Name","WP / Function","Risk Description","Owner / Sub System","Category","Status","Risk Application","Occurrences","Impact","Likelihood","Risk Profile","Score",`Total Value Before Mitigation (k${target})`,`Total Effect of Mitigation (k${target})`,`Total Cost of Mitigation (k${target})`,`Total Value After Mitigation (k${target})`,"Provision %",`Total Provision Approved (k${target})`,"Local Currency","Value Before Mitigation per Occurrence (kLocal)","Comments"];
+  const rcols=["Risk Number","Phase","Risk ID","Unit Name","WP / Function","Risk Description","Owner / Sub System","Category","Status","Risk Application","Occurrences","Impact","Likelihood","Risk Profile","Score",`Total Value Before Mitigation (k${target})`,`Total Effect of Mitigation (k${target})`,`Total Cost of Mitigation (k${target})`,`Total Value After Mitigation (k${target})`,"Provision %",`Total Provision Approved (k${target})`,"Local Currency","Value Before Mitigation per Occurrence (kLocal)","Comments"];
   const rAoa=[["RISK REGISTER - "+(DATA.meta.project||'')],[ "Type",DATA.meta.code,"Date",DATA.meta.date],[],rcols];
   DATA.risks.forEach(r=>{const v=valorize(r),p=profile(r.impact,r.like),mc=effectiveMercuryConfig(r);
-    rAoa.push([r.number,mc.caratUnit,r.wp,r.desc,r.owner,r.cat,r.status,phasingSummary(normalizePhasing(r)),v.occurrences,r.impact,r.like,p.name,p.score,
+    rAoa.push([r.number,riskPhase(r),riskExportId(r),mc.caratUnit,r.wp,r.desc,r.owner,r.cat,r.status,phasingSummary(normalizePhasing(r)),v.occurrences,r.impact,r.like,p.name,p.score,
       +v.grossEUR.toFixed(2),+v.effect.toFixed(2),+v.cost.toFixed(2),+v.residual.toFixed(2),(r.provisionPct??25)+'%',+v.provision.toFixed(2),r.currency,r.valueLocal,r.comments||""]);});
   const rws=XLSX.utils.aoa_to_sheet(rAoa);rws['!cols']=rcols.map(c=>({wch:Math.max(11,c.length)}));
   // Actions
-  const acols=["Risk Number","Unit Name","Action Number","Action Description","Action Owner","Action Status","Targeted Closure Date","Target Reduction (kLocal)","Target Action Cost (kLocal)","Currency",`Target Reduction (k${target})`,`Target Action Cost (k${target})`,"Progress %"];
+  const acols=["Risk Number","Phase","Risk ID","Unit Name","Action Number","Action Description","Action Owner","Action Status","Targeted Closure Date","Target Reduction (kLocal)","Target Action Cost (kLocal)","Currency",`Target Reduction (k${target})`,`Target Action Cost (k${target})`,"Progress %"];
   const aAoa=[["ACTION PLAN REGISTER"],[],acols];
   DATA.risks.forEach(r=>(r.actions||[]).forEach(a=>{const af=fx(a.currency||r.currency),mc=effectiveMercuryConfig(r);
-    aAoa.push([r.number,mc.caratUnit,a.number,a.desc,a.owner,a.status,a.target,a.effectLocal,a.costLocal,a.currency||r.currency,
+    aAoa.push([r.number,riskPhase(r),riskExportId(r),mc.caratUnit,a.number,a.desc,a.owner,a.status,a.target,a.effectLocal,a.costLocal,a.currency||r.currency,
       +((a.effectLocal||0)*af).toFixed(2),+((a.costLocal||0)*af).toFixed(2),(a.progress||0)+'%']);}));
   const aws=XLSX.utils.aoa_to_sheet(aAoa);aws['!cols']=acols.map(c=>({wch:Math.max(11,c.length)}));
   const wb=XLSX.utils.book_new();
