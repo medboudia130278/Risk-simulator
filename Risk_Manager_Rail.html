@@ -590,16 +590,16 @@ details.merc summary .tag{font-size:9.5px;font-family:var(--mono);background:var
     <h2 class="section">Export & Save</h2>
     <div class="exp-grid">
       <div class="exp-card">
+        <div class="ec-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M9 13h6M9 17h6"/></svg></div>
+        <h3>Full Register (.xlsx)</h3>
+        <p>Exports the complete import workbook with Risk Register, Action Plan Register and Mercury Configuration sheets.</p>
+        <button class="btn primary" onclick="exportFull()">Export register</button>
+      </div>
+      <div class="exp-card">
         <div class="ec-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4z"/><path d="M4 9h16M9 4v16"/></svg></div>
         <h3>Mercury Sheet (.xlsx)</h3>
         <p>Generates the file expected by the costing tool: the configuration columns are rebuilt from mapping rules.</p>
-        <button class="btn primary" onclick="exportMercury()">Export for Mercury</button>
-      </div>
-      <div class="exp-card">
-        <div class="ec-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M9 13h6M9 17h6"/></svg></div>
-        <h3>Full Register (.xlsx)</h3>
-        <p>The readable register (identification + assessment + valuation) plus the action plan sheet, for archive or review.</p>
-        <button class="btn" onclick="exportFull()">Export register</button>
+        <button class="btn" onclick="exportMercury()">Export for Mercury</button>
       </div>
       <div class="exp-card">
         <div class="ec-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5-5 5 5M12 5v12"/></svg></div>
